@@ -1,0 +1,95 @@
+---
+import { Code } from "astro:components";
+import Icon from "./Icon.astro";
+import terminalTheme from "../lib/shiki-terminal.mjs";
+
+interface Props {
+  code: string;
+  status?: string;
+  lang?: string;
+}
+
+const { code, status = "200 OK", lang = "json" } = Astro.props;
+---
+
+<div class="response-panel" data-response>
+  <div class="panel-header">
+    <span class="label title">Response</span>
+    <div class="header-right">
+      <span class="status-badge label">{status}</span>
+      <button class="copy-btn" data-copy aria-label="Copy response">
+        <Icon name="copy" size={14} class="icon-copy" />
+        <Icon name="check" size={14} class="icon-check" />
+      </button>
+    </div>
+  </div>
+  <div data-code={code}>
+    <Code code={code} lang={lang as any} theme={terminalTheme} />
+  </div>
+</div>
+
+<style>
+  .response-panel {
+    border: var(--border-dim);
+    border-radius: var(--radius-lg);
+    background: var(--bg-code);
+    overflow: hidden;
+    margin: var(--space-4) 0;
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 12px 9px 16px;
+    border-bottom: var(--border-dim);
+    background: var(--bg-panel);
+  }
+
+  .title {
+    color: var(--text-dim);
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .status-badge {
+    color: var(--bg);
+    background: var(--green);
+    border-radius: var(--radius);
+    padding: 2px 8px;
+    font-weight: 700;
+  }
+
+  .copy-btn {
+    display: flex;
+    padding: 4px;
+    color: var(--text-dim);
+  }
+
+  .copy-btn:hover {
+    color: var(--green);
+  }
+
+  .copy-btn :global(.icon-check) {
+    display: none;
+    color: var(--green);
+  }
+
+  .copy-btn.copied :global(.icon-copy) {
+    display: none;
+  }
+
+  .copy-btn.copied :global(.icon-check) {
+    display: block;
+  }
+
+  .response-panel :global(pre.astro-code) {
+    border: none;
+    border-radius: 0;
+    margin: 0;
+  }
+</style>

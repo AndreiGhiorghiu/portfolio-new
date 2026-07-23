@@ -1,0 +1,80 @@
+---
+const rows = [
+  { key: "STATUS", value: "ONLINE", accent: true },
+  { key: "SYSTEM", value: "OPERATIONAL", accent: false },
+  { key: "LAST DEPLOY", value: "2H AGO", accent: false },
+  { key: "VERSION", value: "1.21.14", accent: false },
+];
+---
+
+<div class="status-widget" role="status">
+  <div class="barcode" aria-hidden="true"></div>
+  <dl>
+    {
+      rows.map((row) => (
+        <div class="row">
+          <dt>
+            <span class="chevron">&gt;</span> {row.key}:
+          </dt>
+          <dd class:list={{ accent: row.accent }}>{row.value}</dd>
+        </div>
+      ))
+    }
+  </dl>
+</div>
+
+<style>
+  .status-widget {
+    border: var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-panel);
+    padding: 12px 14px;
+    box-shadow: var(--glow);
+  }
+
+  .barcode {
+    height: 8px;
+    margin-bottom: 10px;
+    background: repeating-linear-gradient(
+      90deg,
+      rgba(74, 222, 80, 0.5) 0 1px,
+      transparent 1px 3px,
+      rgba(74, 222, 80, 0.25) 3px 5px,
+      transparent 5px 9px,
+      rgba(74, 222, 80, 0.5) 9px 11px,
+      transparent 11px 13px
+    );
+    opacity: 0.7;
+  }
+
+  dl {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .row {
+    display: flex;
+    gap: 8px;
+    font-size: var(--fs-xs);
+    letter-spacing: 0.05em;
+  }
+
+  dt {
+    color: var(--text-dim);
+  }
+
+  .chevron {
+    color: var(--green);
+  }
+
+  dd {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  dd.accent {
+    color: var(--green);
+    text-shadow: 0 0 8px rgba(74, 222, 80, 0.5);
+  }
+</style>

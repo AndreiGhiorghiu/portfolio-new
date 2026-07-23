@@ -1,0 +1,54 @@
+/* Shared styling for all Shiki code blocks (markdown fences + <Code>) */
+pre.astro-code {
+  counter-reset: line;
+  background: var(--bg-code) !important;
+  font-size: 0.78rem;
+  line-height: 1.75;
+  padding: 14px 16px 14px 0;
+  overflow-x: auto;
+  border-radius: var(--radius);
+}
+
+pre.astro-code code {
+  display: block;
+  width: max-content;
+  min-width: 100%;
+}
+
+pre.astro-code .line {
+  counter-increment: line;
+}
+
+pre.astro-code .line::before {
+  content: counter(line);
+  display: inline-block;
+  width: 2em;
+  margin-right: 18px;
+  padding-left: 14px;
+  color: var(--text-faint);
+  text-align: right;
+  user-select: none;
+}
+
+/* trailing empty line emitted by Shiki */
+pre.astro-code .line:last-child:empty {
+  display: none;
+}
+
+/* markdown fences rendered directly in article body get the panel frame */
+article.doc-article > pre.astro-code,
+article.doc-article :not(.code-tabs):not(.response-panel) > pre.astro-code {
+  border: var(--border-dim);
+  margin: var(--space-4) 0;
+}
+
+/* inline code */
+article.doc-article :not(pre) > code {
+  background: rgba(74, 222, 80, 0.08);
+  border: 1px solid rgba(74, 222, 80, 0.15);
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-size: 0.82em;
+  color: var(--green-bright);
+  overflow-wrap: anywhere;
+}

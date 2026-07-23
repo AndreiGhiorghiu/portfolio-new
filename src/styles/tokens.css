@@ -1,0 +1,55 @@
+:root {
+  /* ── color ─────────────────────────────────────────── */
+  --bg: #050807;
+  --bg-panel: #090d0a;
+  --bg-panel-2: #0b100c;
+  --bg-code: #0a0f0b;
+  --bg-active: rgba(74, 222, 80, 0.08);
+  --bg-hover: rgba(74, 222, 80, 0.05);
+
+  --green: #4ade50;
+  --green-bright: #62f068;
+  --green-dim: #2f9b38;
+  --green-faint: rgba(74, 222, 80, 0.35);
+
+  --text: #c9d6cc;
+  --text-bright: #eef5ef;
+  --text-dim: #7d8d81;
+  --text-faint: #55655a;
+
+  --amber: #e5a44d;
+
+  --border-c: rgba(74, 222, 80, 0.22);
+  --border-c-dim: rgba(74, 222, 80, 0.14);
+  --border: 1px solid var(--border-c);
+  --border-dim: 1px solid var(--border-c-dim);
+  --border-strong: 1px solid var(--green);
+
+  --glow: 0 0 14px rgba(74, 222, 80, 0.12);
+  --glow-strong: 0 0 18px rgba(74, 222, 80, 0.25);
+
+  /* ── typography ────────────────────────────────────── */
+  --font: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --fs-2xs: 0.65rem;   /* 10.4px  micro labels        */
+  --fs-xs: 0.7rem;     /* 11.2px  chips, eyebrows     */
+  --fs-sm: 0.8rem;     /* 12.8px  nav, sidebar        */
+  --fs-base: 0.875rem; /* 14px    body                */
+  --fs-md: 0.95rem;    /* 15.2px  leads               */
+  --fs-lg: 1.15rem;    /* 18.4px  card titles         */
+  --fs-h2: 1.3rem;     /* 20.8px  section headings    */
+  --fs-h1: 2.1rem;     /* 33.6px  page title          */
+  --ls-wide: 0.08em;
+  --ls-wider: 0.12em;
+
+  /* ── layout ────────────────────────────────────────── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 40px;
+  --radius: 3px;
+  --radius-lg: 6px;
+  --sidebar-w: 264px;
+  --rail-w: 288px;
+  --header-h: 60px;
+}

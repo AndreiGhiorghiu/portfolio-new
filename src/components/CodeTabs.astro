@@ -1,0 +1,174 @@
+---
+import { Code } from "astro:components";
+import Icon from "./Icon.astro";
+import terminalTheme from "../lib/shiki-terminal.mjs";
+
+interface Sample {
+  label: string;
+  lang: string;
+  code: string;
+}
+
+interface Props {
+  samples: Sample[];
+}
+
+const { samples } = Astro.props;
+---
+
+<div class="code-tabs" data-code-tabs>
+  <div class="tab-bar">
+    <div class="tabs" role="tablist">
+      {
+        samples.map((sample, index) => (
+          <button
+            role="tab"
+            class:list={["tab", "label", { active: index === 0 }]}
+            aria-selected={index === 0 ? "true" : "false"}
+            data-tab={index}
+          >
+            {sample.label}
+          </button>
+        ))
+      }
+    </div>
+    <button class="copy-btn" data-copy aria-label="Copy code">
+      <Icon name="copy" size={15} class="icon-copy" />
+      <Icon name="check" size={15} class="icon-check" />
+    </button>
+  </div>
+  {
+    samples.map((sample, index) => (
+      <div
+        class:list={["tab-panel", { active: index === 0 }]}
+        data-panel={index}
+        data-code={sample.code}
+      >
+        <Code code={sample.code} lang={sample.lang as any} theme={terminalTheme} />
+      </div>
+    ))
+  }
+</div>
+
+<style>
+  .code-tabs {
+    border: var(--border-dim);
+    border-radius: var(--radius-lg);
+    background: var(--bg-code);
+    overflow: hidden;
+    margin: var(--space-4) 0;
+  }
+
+  .tab-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: var(--border-dim);
+    background: var(--bg-panel);
+    padding-right: 10px;
+  }
+
+  .tabs {
+    display: flex;
+    overflow-x: auto;
+  }
+
+  .tab {
+    position: relative;
+    padding: 11px 18px;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+
+  .tab:hover {
+    color: var(--text);
+  }
+
+  .tab.active {
+    color: var(--green);
+  }
+
+  .tab.active::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 2px;
+    background: var(--green);
+  }
+
+  .copy-btn {
+    display: flex;
+    padding: 6px;
+    color: var(--text-dim);
+    flex-shrink: 0;
+  }
+
+  .copy-btn:hover {
+    color: var(--green);
+  }
+
+  .copy-btn :global(.icon-check) {
+    display: none;
+    color: var(--green);
+  }
+
+  .copy-btn.copied :global(.icon-copy) {
+    display: none;
+  }
+
+  .copy-btn.copied :global(.icon-check) {
+    display: block;
+  }
+
+  .tab-panel {
+    display: none;
+  }
+
+  .tab-panel.active {
+    display: block;
+  }
+
+  .tab-panel :global(pre.astro-code) {
+    border: none;
+    border-radius: 0;
+    margin: 0;
+  }
+</style>
+
+<script>
+  document.addEventListener("click", (event) => {
+    const target = event.target as HTMLElement;
+
+    const tab = target.closest<HTMLElement>("[data-tab]");
+    if (tab) {
+      const root = tab.closest("[data-code-tabs]");
+      if (!root) return;
+      const index = tab.dataset.tab;
+      root.querySelectorAll("[data-tab]").forEach((button) => {
+        const active = (button as HTMLElement).dataset.tab === index;
+        button.classList.toggle("active", active);
+        button.setAttribute("aria-selected", String(active));
+      });
+      root.querySelectorAll("[data-panel]").forEach((panel) => {
+        panel.classList.toggle("active", (panel as HTMLElement).dataset.panel === index);
+      });
+      return;
+    }
+
+    const copy = target.closest<HTMLElement>("[data-copy]");
+    if (copy) {
+      const root = copy.closest("[data-code-tabs], [data-response]");
+      if (!root) return;
+      const activePanel =
+        root.querySelector<HTMLElement>("[data-panel].active") ??
+        root.querySelector<HTMLElement>("[data-code]");
+      const code = activePanel?.dataset.code ?? "";
+      navigator.clipboard.writeText(code).then(() => {
+        copy.classList.add("copied");
+        setTimeout(() => copy.classList.remove("copied"), 1600);
+      });
+    }
+  });
+</script>

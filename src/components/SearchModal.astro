@@ -1,0 +1,271 @@
+---
+import Icon from "./Icon.astro";
+import { getCollection } from "astro:content";
+import { docUrl, groupOf } from "../lib/nav";
+
+const entries = await getCollection("docs");
+const index = entries.map((entry) => ({
+  title: entry.data.title,
+  description: entry.data.description,
+  group: groupOf(entry.id)?.title ?? "Docs",
+  url: docUrl(entry.id),
+}));
+---
+
+<div class="search-modal" id="search-modal" hidden>
+  <div class="overlay" data-search-close></div>
+  <div class="modal-panel" role="dialog" aria-modal="true" aria-label="Search documentation">
+    <div class="input-row">
+      <Icon name="search" size={16} />
+      <input
+        type="text"
+        id="search-input"
+        placeholder="Search docs..."
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <button class="close-btn label" data-search-close>Esc</button>
+    </div>
+    <ul class="results" id="search-results" role="listbox"></ul>
+    <div class="modal-footer label">
+      <span><kbd>↑↓</kbd> navigate</span>
+      <span><kbd>↵</kbd> open</span>
+      <span><kbd>esc</kbd> close</span>
+    </div>
+  </div>
+</div>
+
+<script is:inline define:vars={{ index }}>
+  window.__searchIndex = index;
+</script>
+
+<style>
+  .search-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+  }
+
+  .overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(2, 4, 3, 0.8);
+    backdrop-filter: blur(3px);
+  }
+
+  .modal-panel {
+    position: relative;
+    margin: 12vh auto 0;
+    width: min(560px, calc(100vw - 32px));
+    background: var(--bg-panel);
+    border: var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--glow-strong);
+    overflow: hidden;
+  }
+
+  .input-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: var(--border-dim);
+    color: var(--green);
+  }
+
+  input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text-bright);
+    font-family: var(--font);
+    font-size: var(--fs-base);
+  }
+
+  input::placeholder {
+    color: var(--text-faint);
+  }
+
+  .close-btn {
+    color: var(--text-faint);
+    border: 1px solid rgba(125, 141, 129, 0.3);
+    border-radius: 3px;
+    padding: 2px 7px;
+  }
+
+  .results {
+    list-style: none;
+    margin: 0;
+    padding: 8px;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+
+  .results:empty {
+    padding: 0;
+  }
+
+  .results :global(li) {
+    border-radius: var(--radius);
+  }
+
+  .results :global(a) {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 9px 12px;
+    border-left: 2px solid transparent;
+    border-radius: 0 var(--radius) var(--radius) 0;
+  }
+
+  .results :global(li.selected a),
+  .results :global(a:hover) {
+    background: var(--bg-active);
+    border-left-color: var(--green);
+  }
+
+  .results :global(.r-group) {
+    font-size: var(--fs-2xs);
+    letter-spacing: var(--ls-wide);
+    text-transform: uppercase;
+    color: var(--green-dim);
+  }
+
+  .results :global(.r-title) {
+    color: var(--text);
+    font-size: var(--fs-sm);
+    font-weight: 600;
+  }
+
+  .results :global(.r-desc) {
+    color: var(--text-faint);
+    font-size: var(--fs-xs);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .results :global(.r-empty) {
+    padding: 16px 12px;
+    color: var(--text-faint);
+    font-size: var(--fs-sm);
+  }
+
+  .modal-footer {
+    display: flex;
+    gap: 16px;
+    padding: 10px 16px;
+    border-top: var(--border-dim);
+    color: var(--text-faint);
+  }
+
+  kbd {
+    font-family: var(--font);
+    color: var(--text-dim);
+  }
+</style>
+
+<script>
+  const modal = document.getElementById("search-modal");
+  const input = document.getElementById("search-input") as HTMLInputElement | null;
+  const results = document.getElementById("search-results");
+
+  interface SearchEntry {
+    title: string;
+    description: string;
+    group: string;
+    url: string;
+  }
+
+  const getIndex = (): SearchEntry[] =>
+    (window as unknown as { __searchIndex?: SearchEntry[] }).__searchIndex ?? [];
+
+  let selected = 0;
+
+  function render(query: string) {
+    if (!results) return;
+    const q = query.trim().toLowerCase();
+    const items = getIndex().filter(
+      (entry) =>
+        !q ||
+        entry.title.toLowerCase().includes(q) ||
+        entry.description.toLowerCase().includes(q) ||
+        entry.group.toLowerCase().includes(q),
+    );
+    selected = 0;
+
+    if (items.length === 0) {
+      results.innerHTML = `<li class="r-empty">> no results for "${query.replace(/[<>&"]/g, "")}"_</li>`;
+      return;
+    }
+
+    results.innerHTML = items
+      .map(
+        (entry, index) => `
+          <li class="${index === 0 ? "selected" : ""}" role="option">
+            <a href="${entry.url}">
+              <span class="r-group">${entry.group}</span>
+              <span class="r-title">${entry.title}</span>
+              <span class="r-desc">${entry.description}</span>
+            </a>
+          </li>`,
+      )
+      .join("");
+  }
+
+  function open() {
+    if (!modal || !input) return;
+    modal.hidden = false;
+    document.body.style.overflow = "hidden";
+    input.value = "";
+    render("");
+    input.focus();
+  }
+
+  function close() {
+    if (!modal) return;
+    modal.hidden = true;
+    document.body.style.overflow = "";
+  }
+
+  function move(delta: number) {
+    if (!results) return;
+    const items = [...results.querySelectorAll("li[role='option']")];
+    if (items.length === 0) return;
+    selected = (selected + delta + items.length) % items.length;
+    items.forEach((item, index) => item.classList.toggle("selected", index === selected));
+    items[selected]?.scrollIntoView({ block: "nearest" });
+  }
+
+  document.addEventListener("click", (event) => {
+    const target = event.target as HTMLElement;
+    if (target.closest("[data-search-open], #search-open-header")) open();
+    if (target.closest("[data-search-close]")) close();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+      event.preventDefault();
+      if (modal?.hidden) open();
+      else close();
+      return;
+    }
+    if (modal?.hidden) return;
+    if (event.key === "Escape") close();
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      move(1);
+    }
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      move(-1);
+    }
+    if (event.key === "Enter") {
+      const link = results?.querySelector<HTMLAnchorElement>("li.selected a");
+      if (link) window.location.href = link.href;
+    }
+  });
+
+  input?.addEventListener("input", () => render(input.value));
+</script>

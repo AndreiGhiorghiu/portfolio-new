@@ -1,0 +1,40 @@
+---
+import Icon from "./Icon.astro";
+
+interface Props {
+  icon?: string;
+  id: string;
+}
+
+const { icon = "code", id } = Astro.props;
+---
+
+<h2 {id} class="section-heading">
+  <span class="heading-icon">
+    <Icon name={icon} size={15} />
+  </span>
+  <slot />
+</h2>
+
+<style>
+  .section-heading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: var(--fs-h2);
+    margin: var(--space-5) 0 var(--space-4);
+  }
+
+  .heading-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    color: var(--green);
+    border: var(--border-dim);
+    border-radius: var(--radius);
+    background: var(--bg-active);
+  }
+</style>

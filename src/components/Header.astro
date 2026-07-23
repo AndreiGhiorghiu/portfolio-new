@@ -1,0 +1,235 @@
+---
+import Icon from "./Icon.astro";
+
+const current = Astro.url.pathname;
+
+const links = [
+  { label: "Architecture", href: "/docs/overview/high-level-overview/", match: "/docs" },
+  { label: "Projects", href: "/projects/", match: "/projects" },
+  { label: "Stack", href: "/stack/", match: "/stack" },
+  { label: "About", href: "/about/", match: "/about" },
+  { label: "Contact", href: "/contact/", match: "/contact" },
+];
+---
+
+<header class="site-header">
+  <div class="header-left">
+    <button class="hamburger" id="drawer-open" aria-label="Open navigation">
+      <Icon name="menu" size={20} />
+    </button>
+    <a href="/docs/overview/high-level-overview/" class="logo">
+      <span class="logo-mark">AG<span class="logo-cursor">_</span></span>
+      <span class="logo-slash">/</span>
+      <span class="logo-name">
+        <span class="logo-title">Andrei Ghiorghiu</span>
+        <span class="logo-sub label">Full-Stack Architect</span>
+      </span>
+    </a>
+  </div>
+
+  <nav class="header-nav" aria-label="Main">
+    {
+      links.map((link) => (
+        <a
+          href={link.href}
+          class:list={["nav-link", "label", { active: current.startsWith(link.match) }]}
+          aria-current={current.startsWith(link.match) ? "page" : undefined}
+        >
+          {link.label}
+        </a>
+      ))
+    }
+  </nav>
+
+  <div class="header-actions">
+    <a
+      href="https://github.com/andreighiorghiu"
+      class="icon-link"
+      aria-label="GitHub"
+      target="_blank"
+      rel="noopener"
+    >
+      <Icon name="github" size={19} />
+    </a>
+    <a
+      href="https://www.linkedin.com/in/andreighiorghiu"
+      class="icon-link linkedin"
+      aria-label="LinkedIn"
+      target="_blank"
+      rel="noopener"
+    >
+      <Icon name="linkedin" size={17} />
+    </a>
+    <button class="terminal-btn" id="search-open-header" aria-label="Search (Cmd+K)">
+      <Icon name="terminal" size={17} />
+    </button>
+  </div>
+</header>
+
+<style>
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    height: var(--header-h);
+    padding: 0 var(--space-4);
+    background: rgba(5, 8, 7, 0.92);
+    backdrop-filter: blur(8px);
+    border-bottom: var(--border-dim);
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 0;
+  }
+
+  .hamburger {
+    display: none;
+    color: var(--text);
+    padding: 6px;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-bright);
+  }
+
+  .logo-mark {
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    color: var(--text-bright);
+  }
+
+  .logo-cursor {
+    color: var(--green);
+  }
+
+  .logo-slash {
+    color: var(--text-faint);
+    font-size: 1.1rem;
+  }
+
+  .logo-name {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.3;
+  }
+
+  .logo-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-bright);
+  }
+
+  .logo-sub {
+    color: var(--text-dim);
+    font-size: var(--fs-2xs);
+    font-weight: 500;
+  }
+
+  .header-nav {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
+  .nav-link {
+    position: relative;
+    color: var(--text-dim);
+    padding: 4px 2px;
+    height: var(--header-h);
+    display: flex;
+    align-items: center;
+  }
+
+  .nav-link:hover {
+    color: var(--text);
+  }
+
+  .nav-link.active {
+    color: var(--green);
+  }
+
+  .nav-link.active::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2px;
+    background: var(--green);
+    box-shadow: var(--glow-strong);
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .icon-link {
+    color: var(--text);
+    display: flex;
+    padding: 4px;
+  }
+
+  .icon-link:hover {
+    color: var(--green);
+  }
+
+  .terminal-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    color: var(--green);
+    border: var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-active);
+  }
+
+  .terminal-btn:hover {
+    border-color: var(--green);
+    box-shadow: var(--glow);
+  }
+
+  @media (max-width: 1023px) {
+    .header-nav {
+      display: none;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .site-header {
+      padding: 0 var(--space-3);
+    }
+
+    .hamburger {
+      display: flex;
+    }
+
+    .logo-name {
+      display: none;
+    }
+
+    .logo-slash {
+      display: none;
+    }
+
+    .linkedin {
+      display: none;
+    }
+  }
+</style>

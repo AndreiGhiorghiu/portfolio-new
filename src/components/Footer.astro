@@ -1,0 +1,36 @@
+---
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <div>
+    <p>© {year} Andrei Ghiorghiu</p>
+    <p class="dim">All rights reserved.</p>
+  </div>
+  <span class="prompt-glyph" aria-hidden="true">&gt;<span class="blink">_</span></span>
+</footer>
+
+<style>
+  .site-footer {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: var(--space-4);
+    border-top: var(--border-dim);
+    font-size: var(--fs-sm);
+    color: var(--text-dim);
+  }
+
+  .dim {
+    color: var(--text-faint);
+  }
+
+  .prompt-glyph {
+    color: var(--green);
+    font-weight: 700;
+  }
+
+  .blink {
+    animation: blink 1.1s steps(1) infinite;
+  }
+</style>

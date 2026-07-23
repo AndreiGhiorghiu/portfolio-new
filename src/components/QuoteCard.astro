@@ -1,0 +1,93 @@
+---
+import Icon from "./Icon.astro";
+---
+
+<figure class="quote-card">
+  <div class="chrome" aria-hidden="true">
+    <span class="dots">
+      <i></i>
+      <i></i>
+      <i></i>
+    </span>
+    <Icon name="expand" size={12} class="expand" />
+  </div>
+  <div class="body dotted-bg">
+    <span class="mark open" aria-hidden="true">“</span>
+    <blockquote>Simplicity is the ultimate sophistication.</blockquote>
+    <figcaption>— Leonardo da Vinci</figcaption>
+    <span class="mark close" aria-hidden="true">”</span>
+  </div>
+</figure>
+
+<style>
+  .quote-card {
+    border: var(--border-dim);
+    border-radius: var(--radius-lg);
+    background: var(--bg-panel);
+    overflow: hidden;
+  }
+
+  .chrome {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-bottom: var(--border-dim);
+  }
+
+  .dots {
+    display: flex;
+    gap: 5px;
+  }
+
+  .dots i {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--text-faint);
+  }
+
+  .dots i:first-child {
+    background: rgba(74, 222, 80, 0.6);
+  }
+
+  .expand {
+    color: var(--text-faint);
+  }
+
+  .body {
+    position: relative;
+    padding: var(--space-4) var(--space-4) var(--space-5);
+  }
+
+  .mark {
+    position: absolute;
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--green);
+  }
+
+  .mark.open {
+    top: 10px;
+    left: 14px;
+  }
+
+  .mark.close {
+    right: 14px;
+    bottom: 8px;
+  }
+
+  blockquote {
+    color: var(--green);
+    font-size: var(--fs-sm);
+    line-height: 1.7;
+    padding: var(--space-3) var(--space-2) 0;
+  }
+
+  figcaption {
+    margin-top: var(--space-3);
+    padding-left: var(--space-2);
+    color: var(--text-dim);
+    font-size: var(--fs-xs);
+  }
+</style>

@@ -1,0 +1,62 @@
+/* uppercase micro-label used across nav, chips, panel titles */
+.label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: var(--ls-wide);
+  text-transform: uppercase;
+}
+
+/* bordered panel — the basic surface of the whole UI */
+.panel {
+  background: var(--bg-panel);
+  border: var(--border-dim);
+  border-radius: var(--radius-lg);
+}
+
+/* dotted grid background for diagram areas */
+.dotted-bg {
+  background-image: radial-gradient(rgba(74, 222, 80, 0.14) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+/* blinking cursor appended to page titles */
+.cursor::after {
+  content: "_";
+  color: var(--green);
+  animation: blink 1.1s steps(1) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* green prompt chevron */
+.prompt::before {
+  content: "> ";
+  color: var(--green);
+}
+
+/* request/response side-by-side used on example pages */
+.code-example-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--space-3);
+  align-items: start;
+}
+
+@media (max-width: 1439px) {
+  .code-example-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

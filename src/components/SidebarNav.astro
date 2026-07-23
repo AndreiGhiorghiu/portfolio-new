@@ -1,0 +1,118 @@
+---
+import Icon from "./Icon.astro";
+import { nav, docUrl, groupOf } from "../lib/nav";
+
+interface Props {
+  currentSlug?: string;
+}
+
+const { currentSlug = "" } = Astro.props;
+const activeGroup = groupOf(currentSlug);
+---
+
+<nav class="sidebar-nav" aria-label="Documentation">
+  {
+    nav.map((group) => (
+      <details open={!activeGroup || group.title === activeGroup.title || undefined}>
+        <summary>
+          <span class="group-icon">
+            <Icon name={group.icon} size={15} />
+          </span>
+          <span class="group-title label">{group.title}</span>
+          <Icon name="chevron-down" size={14} class="chevron" />
+        </summary>
+        <ul>
+          {group.items.map((item) => (
+            <li>
+              <a
+                href={docUrl(item.slug)}
+                class:list={["nav-item", { active: item.slug === currentSlug }]}
+                aria-current={item.slug === currentSlug ? "page" : undefined}
+              >
+                {item.title}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </details>
+    ))
+  }
+</nav>
+
+<style>
+  .sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  details {
+    border-radius: var(--radius);
+  }
+
+  summary {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    cursor: pointer;
+    list-style: none;
+    color: var(--text);
+    border-radius: var(--radius);
+    user-select: none;
+  }
+
+  summary::-webkit-details-marker {
+    display: none;
+  }
+
+  summary:hover {
+    background: var(--bg-hover);
+  }
+
+  .group-icon {
+    display: flex;
+    color: var(--green);
+  }
+
+  .group-title {
+    flex: 1;
+    color: var(--text);
+    font-weight: 700;
+  }
+
+  .chevron {
+    color: var(--text-dim);
+    transition: transform 0.2s ease;
+  }
+
+  details[open] .chevron {
+    transform: rotate(180deg);
+  }
+
+  ul {
+    list-style: none;
+    margin: 2px 0 var(--space-2);
+    padding: 0;
+  }
+
+  .nav-item {
+    display: block;
+    padding: 6px 10px 6px 36px;
+    font-size: var(--fs-sm);
+    color: var(--text-dim);
+    border-left: 2px solid transparent;
+    border-radius: 0 var(--radius) var(--radius) 0;
+  }
+
+  .nav-item:hover {
+    color: var(--text);
+    background: var(--bg-hover);
+  }
+
+  .nav-item.active {
+    color: var(--green);
+    background: var(--bg-active);
+    border-left-color: var(--green);
+  }
+</style>

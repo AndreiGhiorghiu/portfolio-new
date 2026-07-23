@@ -1,0 +1,84 @@
+---
+import Icon from "./Icon.astro";
+
+const stack = [
+  { icon: "code", name: "TypeScript", role: "Language" },
+  { icon: "hexagon-dot", name: "Node.js", role: "Runtime" },
+  { icon: "zap", name: "Hono", role: "HTTP Layer" },
+  { icon: "shield-check", name: "Zod", role: "Validation" },
+  { icon: "database", name: "Drizzle + SQLite", role: "Database" },
+  { icon: "layout", name: "Vue 3", role: "Frontend" },
+  { icon: "cube", name: "Pinia", role: "Client State" },
+  { icon: "grid", name: "TanStack Query", role: "Server Cache" },
+  { icon: "zap", name: "Vite", role: "Build Tool" },
+  { icon: "check", name: "Vitest", role: "Testing" },
+];
+---
+
+<div class="tech-stack panel">
+  <p class="panel-title label">Tech Stack</p>
+  <ul>
+    {
+      stack.map((tech) => (
+        <li>
+          <span class="tech-icon">
+            <Icon name={tech.icon} size={14} />
+          </span>
+          <span class="tech-name">{tech.name}</span>
+          <span class="tech-role">{tech.role}</span>
+        </li>
+      ))
+    }
+  </ul>
+</div>
+
+<style>
+  .tech-stack {
+    padding: var(--space-3);
+  }
+
+  .panel-title {
+    color: var(--green);
+    margin-bottom: var(--space-3);
+  }
+
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: var(--fs-sm);
+  }
+
+  .tech-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    color: var(--green);
+    border: var(--border-dim);
+    border-radius: var(--radius);
+    background: var(--bg-active);
+  }
+
+  .tech-name {
+    flex: 1;
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .tech-role {
+    color: var(--text-faint);
+    font-size: var(--fs-xs);
+  }
+</style>

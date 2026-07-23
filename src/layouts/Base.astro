@@ -1,0 +1,39 @@
+---
+import "@fontsource/jetbrains-mono/400.css";
+import "@fontsource/jetbrains-mono/400-italic.css";
+import "@fontsource/jetbrains-mono/500.css";
+import "@fontsource/jetbrains-mono/600.css";
+import "@fontsource/jetbrains-mono/700.css";
+import "@fontsource/jetbrains-mono/800.css";
+import "../styles/tokens.css";
+import "../styles/base.css";
+import "../styles/utilities.css";
+import "../styles/code.css";
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+const fullTitle = `${title} — Andrei Ghiorghiu`;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta name="theme-color" content="#050807" />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

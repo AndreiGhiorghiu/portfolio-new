@@ -1,0 +1,153 @@
+---
+title: System Architecture Overview
+description: >-
+  This document outlines the architecture of Agent Marketplace — a modern,
+  scalable and maintainable full-stack TypeScript system. Every interaction is
+  a typed message routed to an agent, designed with modularity, security and
+  developer experience in mind.
+badges: [SCALABLE, SECURE, MODULAR, TESTABLE, CLOUD-READY]
+---
+
+import ArchDiagram from "../../../components/ArchDiagram.astro";
+import PrincipleCards from "../../../components/PrincipleCards.astro";
+import CodeTabs from "../../../components/CodeTabs.astro";
+import ResponsePanel from "../../../components/ResponsePanel.astro";
+
+## High Level Architecture
+
+<ArchDiagram />
+
+The system is a **message-oriented, peer-to-peer agent architecture**. Instead
+of dozens of REST routes, every client–server interaction is a typed `Message`
+sent to a **single HTTP endpoint** (`POST /io`) and routed to an **Agent**. The
+agent dispatches each message to a **Worker**, which runs exactly one
+**operation** with schema-validated input and output and role-based access
+control.
+
+The same `Agent` class runs on both sides of the wire — send-only in the
+browser, processing on the server — which makes the "peer-to-peer" framing
+literal and keeps the protocol package free of any server dependency.
+
+## Core Principles
+
+<PrincipleCards
+  items={[
+    {
+      icon: "cube",
+      title: "Modularity",
+      text: "Feature-based services and self-registering operations. Adding a feature is one module — zero router wiring.",
+    },
+    {
+      icon: "chart",
+      title: "Scalability",
+      text: "Stateless encrypted sessions and one uniform endpoint make horizontal scaling a deployment detail.",
+    },
+    {
+      icon: "shield-check",
+      title: "Security",
+      text: "Capability-based permissions, AES-GCM tokens, and zod validation on every input and output.",
+    },
+    {
+      icon: "eye",
+      title: "Observability",
+      text: "Every request flows through a single dispatch point — one place to log, trace and meter.",
+    },
+  ]}
+/>
+
+## Code Example — API Request
+
+Every call is the same shape: a `Message` envelope posted to `/io`. The `to`
+field addresses an operation, `from` carries the caller's network id and
+encrypted identity token, and `data` is the operation's zod-validated input.
+
+<div class="code-example-grid">
+  <CodeTabs
+    samples={[
+      {
+        label: "curl",
+        lang: "sh",
+        code: `curl -X POST https://api.example.com/io \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "type": "command",
+    "from": "x:aB3dE5fG7hJ9kL1mN3pQ5rS7.<token>",
+    "to": "books/list",
+    "data": { "page": 1, "pageSize": 10 }
+  }'`,
+      },
+      {
+        label: "JavaScript",
+        lang: "js",
+        code: `const reply = await fetch("https://api.example.com/io", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    type: "command",
+    from: clientId + "." + token,
+    to: "books/list",
+    data: { page: 1, pageSize: 10 },
+  }),
+}).then((res) => res.json());`,
+      },
+      {
+        label: "TypeScript",
+        lang: "ts",
+        code: `import { Agent, type Message } from "@market/shared";
+
+const agent = new Agent({ id: clientId });
+
+const message: Message = agent.command("books/list", {
+  page: 1,
+  pageSize: 10,
+});
+
+const { data } = await agent.send(endpoint, message);`,
+      },
+      {
+        label: "Python",
+        lang: "python",
+        code: `import requests
+
+reply = requests.post(
+    "https://api.example.com/io",
+    json={
+        "type": "command",
+        "from": f"{client_id}.{token}",
+        "to": "books/list",
+        "data": {"page": 1, "pageSize": 10},
+    },
+).json()`,
+      },
+    ]}
+  />
+  <ResponsePanel
+    code={`{
+  "type": "reply",
+  "from": "x:mK2nP4qR6sT8uV0w",
+  "to": "x:aB3dE5fG7hJ9kL1m",
+  "data": {
+    "items": [
+      {
+        "id": "bk_7f3a2c",
+        "price": 12.99,
+        "meta": {
+          "title": "Dune",
+          "isbn": "978-0441172719"
+        }
+      }
+    ],
+    "total": 42,
+    "page": 1
+  }
+}`}
+  />
+</div>
+
+## Request Lifecycle
+
+1. The client agent wraps the call in a `Message` envelope and posts it to `/io`.
+2. The HTTP layer validates the envelope shape with zod and hands it to `agent.process()`.
+3. The agent slices the identity token out of `from`, decrypts it (AES-GCM), and checks the revocation blocklist.
+4. A per-request **Worker** checks the role's capability map, validates the operation input, runs it, and validates the output.
+5. The reply travels back as a `Message` — same envelope, opposite direction.

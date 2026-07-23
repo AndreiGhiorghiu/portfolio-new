@@ -1,0 +1,94 @@
+---
+import Icon from "./Icon.astro";
+import { findBySlug, docUrl } from "../lib/nav";
+
+interface Props {
+  slug: string;
+}
+
+const { slug } = Astro.props;
+const { prev, next } = findBySlug(slug);
+---
+
+<nav class="prev-next" aria-label="Pagination">
+  {
+    prev ? (
+      <a href={docUrl(prev.slug)} class="page-card prev">
+        <span class="direction label">
+          <Icon name="arrow-left" size={14} /> Prev
+        </span>
+        <span class="page-title">{prev.title}</span>
+      </a>
+    ) : (
+      <span />
+    )
+  }
+  {
+    next && (
+      <a href={docUrl(next.slug)} class="page-card next">
+        <span class="direction label">
+          Next <Icon name="arrow-right" size={14} />
+        </span>
+        <span class="page-title">{next.title}</span>
+      </a>
+    )
+  }
+</nav>
+
+<style>
+  .prev-next {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+    margin-top: var(--space-5);
+  }
+
+  .page-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: var(--space-3) var(--space-4);
+    border: var(--border-dim);
+    border-radius: var(--radius-lg);
+    background: var(--bg-panel);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .page-card:hover {
+    border-color: var(--border-c);
+    box-shadow: var(--glow);
+  }
+
+  .page-card.next {
+    align-items: flex-end;
+    text-align: right;
+  }
+
+  .direction {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-dim);
+  }
+
+  .page-card:hover .direction {
+    color: var(--green);
+  }
+
+  .page-title {
+    color: var(--text);
+    font-weight: 600;
+    font-size: var(--fs-base);
+  }
+
+  @media (max-width: 519px) {
+    .prev-next {
+      grid-template-columns: 1fr;
+    }
+
+    .page-card.next {
+      align-items: flex-start;
+      text-align: left;
+    }
+  }
+</style>

@@ -1,0 +1,114 @@
+---
+import Icon from "./Icon.astro";
+import SidebarNav from "./SidebarNav.astro";
+import SearchBox from "./SearchBox.astro";
+import StatusWidget from "./StatusWidget.astro";
+
+interface Props {
+  currentSlug?: string;
+}
+
+const { currentSlug } = Astro.props;
+---
+
+<div class="drawer-root" id="mobile-drawer" hidden>
+  <div class="drawer-overlay" data-drawer-close></div>
+  <aside class="drawer" aria-label="Navigation drawer">
+    <div class="drawer-header">
+      <span class="drawer-logo">AG<span class="accent">_</span></span>
+      <button class="close" data-drawer-close aria-label="Close navigation">
+        <Icon name="x" size={18} />
+      </button>
+    </div>
+    <div class="drawer-search">
+      <SearchBox />
+    </div>
+    <div class="drawer-nav">
+      <SidebarNav currentSlug={currentSlug} />
+    </div>
+    <div class="drawer-status">
+      <StatusWidget />
+    </div>
+  </aside>
+</div>
+
+<style>
+  .drawer-root {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+  }
+
+  .drawer-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(2, 4, 3, 0.75);
+  }
+
+  .drawer {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: min(320px, 85vw);
+    background: var(--bg);
+    border-right: var(--border-dim);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    padding: var(--space-3);
+    gap: var(--space-3);
+  }
+
+  .drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .drawer-logo {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--text-bright);
+  }
+
+  .accent {
+    color: var(--green);
+  }
+
+  .close {
+    color: var(--text-dim);
+    padding: 6px;
+  }
+
+  .close:hover {
+    color: var(--green);
+  }
+
+  .drawer-nav {
+    flex: 1;
+  }
+</style>
+
+<script>
+  const drawer = document.getElementById("mobile-drawer");
+
+  document.addEventListener("click", (event) => {
+    const target = event.target as HTMLElement;
+    if (target.closest("#drawer-open") && drawer) {
+      drawer.hidden = false;
+      document.body.style.overflow = "hidden";
+    }
+    if (target.closest("[data-drawer-close]") && drawer) {
+      drawer.hidden = true;
+      document.body.style.overflow = "";
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && drawer && !drawer.hidden) {
+      drawer.hidden = true;
+      document.body.style.overflow = "";
+    }
+  });
+</script>
