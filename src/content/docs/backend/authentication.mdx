@@ -1,0 +1,98 @@
+---
+title: Authentication
+description: >-
+  Stateless sessions built on Web Crypto — PBKDF2-hashed secrets, AES-GCM
+  identity tokens the client can carry but never read, and a deterministic
+  revocation blocklist that makes logout actually work.
+badges: [AES-GCM, PBKDF2, STATELESS, ECDSA]
+---
+
+## The Model at a Glance
+
+| Concern | Mechanism |
+| --- | --- |
+| Secret storage | **PBKDF2-SHA384**, 1,000,000 iterations, per-secret random salt |
+| Sessions | **AES-GCM-encrypted** identity token — no session table |
+| Logout | **Deterministic SHA-384** token hash in a revocation blocklist |
+| Future trust | **ECDSA P-384** keypair per account, ready for signed messages |
+
+Everything uses the standard **Web Crypto API** (`crypto.subtle`), which is
+why the same crypto module runs in Node and the browser.
+
+## Issuing a Session
+
+`accounts/connect` verifies the secret against its stored PBKDF2 hash, then
+encrypts the caller's identity into an opaque token:
+
+```ts
+// server/src/services/accounts/connect.ts (excerpt)
+// verify the secret against the stored hash
+const isValid = await isSecretValid(identity.token, data.secret)
+if (!isValid) throw new InvalidError(invalidMessage)
+
+// issue an encrypted identity token
+const role = account.role ?? "BUYER"
+const tokenData: TokenIdentity = {
+  accountId: account.id,
+  identifier: identity.identifier,
+  role,
+}
+
+const token = await io.agent.encrypt(JSON.stringify(tokenData))
+
+return { token, role }
+```
+
+The client attaches this token to every message's `from` field but **cannot
+read it** — only the server holds the AES key. On each request the server
+decrypts it back into `{ accountId, identifier, role }`. That's a stateless
+session: any server instance with the key can authenticate any request.
+
+Note the deliberately vague error message — the same reply whether the
+identifier is unknown, the account inactive, or the secret wrong, so the
+endpoint doesn't leak which accounts exist.
+
+## Revocation That Actually Works
+
+Logout stores a hash of the token in a blocklist that `Agent.process` checks
+on every request:
+
+```ts
+// server/src/agent.ts (excerpt)
+// revocation check uses a deterministic hash so a stored token can be matched again
+async function isTokenRevoked(token: string) {
+  const tokenHash = await stringToHash(token)
+  const revoked = await db.query.revokedTokens.findFirst({
+    where: eq(db.revokedTokens.tokenHash, tokenHash),
+  })
+  return Boolean(revoked)
+}
+```
+
+The comment carries a war story: the hash **must** be deterministic, because a
+lookup key has to be reproducible. Salting is for *password storage*, not for
+blocklist keys — an earlier iteration of this design used a random salt here,
+which meant the stored hash never matched the recomputed one and logout
+silently revoked nothing. Stateless sessions are only honest if the
+revocation path genuinely works.
+
+## Secret Hashing
+
+Secrets never touch the database in recoverable form. `secretToHash` derives a
+384-bit key via PBKDF2 and packs `version + salt + iterations + key` into one
+self-describing string, so parameters can evolve without breaking stored
+hashes:
+
+```ts
+// shared/src/crypto.ts (excerpt)
+const algo = { name: "PBKDF2", hash: "SHA-384", salt, iterations: 1e6 }
+const baseKey = await keyload("PBKDF2", encode(secret), ["deriveBits"])
+const keyBuffer = await crypto.subtle.deriveBits(algo, baseKey, keySize)
+```
+
+## Groundwork: Per-Account Keypairs
+
+Every account is created with an **ECDSA P-384** keypair. Nothing signs
+messages yet — but because the protocol addresses agents rather than URLs,
+signed messages and agent-to-agent trust are a planned extension, and the key
+material is already in place.

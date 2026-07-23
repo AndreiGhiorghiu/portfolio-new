@@ -1,0 +1,311 @@
+---
+title: API Examples
+description: >-
+  End-to-end request walkthroughs against the single /io endpoint — register,
+  connect, create a catalog, add a book (including a rules-engine rejection),
+  and list with filters.
+badges: [POST-/IO, WALKTHROUGHS]
+---
+
+import CodeTabs from "../../../components/CodeTabs.astro";
+import ResponsePanel from "../../../components/ResponsePanel.astro";
+
+## Register an Account
+
+`accounts/register` is a public operation — callable anonymously. Internally
+it orchestrates `accounts/create`, `identities/create` and `accounts/connect`
+as system calls, and returns a ready-to-use session:
+
+<div class="code-example-grid">
+  <CodeTabs
+    samples={[
+      {
+        label: "curl",
+        lang: "sh",
+        code: `curl -X POST http://localhost:3000/io \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "type": "command",
+    "from": "x:aB3dE5fG7hJ9kL1mN3pQ5rS7anonymous",
+    "to": "accounts/register",
+    "data": { "identifier": "ada", "secret": "seller-secret-001" }
+  }'`,
+      },
+      {
+        label: "TypeScript",
+        lang: "ts",
+        code: `import { useAuthStore } from "~/stores/auth"
+
+const auth = useAuthStore()
+
+// wraps agent.send({ type: "command", to: "accounts/register", … })
+await auth.register("ada", "seller-secret-001")`,
+      },
+    ]}
+  />
+  <ResponsePanel
+    code={`{
+  "type": "reply",
+  "from": "x:mK2nP4qR6sT8uV0w",
+  "to": "x:aB3dE5fG7hJ9kL1m…",
+  "data": {
+    "token": "kX9…encrypted…Zw==",
+    "role": "SELLER"
+  }
+}`}
+  />
+</div>
+
+## Connect (Login)
+
+Same shape, different operation. The reply token is opaque to the client — it
+is attached to every subsequent message's `from` field:
+
+<div class="code-example-grid">
+  <CodeTabs
+    samples={[
+      {
+        label: "curl",
+        lang: "sh",
+        code: `curl -X POST http://localhost:3000/io \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "type": "command",
+    "from": "x:aB3dE5fG7hJ9kL1mN3pQ5rS7anonymous",
+    "to": "accounts/connect",
+    "data": { "identifier": "reader", "secret": "buyer-secret-001" }
+  }'`,
+      },
+      {
+        label: "TypeScript",
+        lang: "ts",
+        code: `await auth.connect("reader", "buyer-secret-001")
+// store.set("auth/token", …) + agent identity applied`,
+      },
+    ]}
+  />
+  <ResponsePanel
+    code={`{
+  "type": "reply",
+  "data": {
+    "token": "pQ4…encrypted…Yg==",
+    "role": "BUYER"
+  }
+}`}
+  />
+</div>
+
+## Create a Catalog (Seller)
+
+Requires the `SELLER` capability — the token in `from` now carries the
+seller's identity. The catalog binds itself to the `fiction` rule set:
+
+<div class="code-example-grid">
+  <CodeTabs
+    samples={[
+      {
+        label: "curl",
+        lang: "sh",
+        code: `curl -X POST http://localhost:3000/io \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "type": "command",
+    "from": "x:aB3dE5fG7hJ9kL1mN3pQ5rS7<token>",
+    "to": "catalogs/create",
+    "data": { "name": "Science Fiction Shelf", "rules": "fiction" }
+  }'`,
+      },
+      {
+        label: "TypeScript",
+        lang: "ts",
+        code: `const { createCatalog } = useCatalogs()
+
+await createCatalog({
+  name: "Science Fiction Shelf",
+  rules: "fiction",
+})`,
+      },
+    ]}
+  />
+  <ResponsePanel
+    code={`{
+  "type": "reply",
+  "data": {
+    "success": true,
+    "id": "ctl_92hf30a1"
+  }
+}`}
+  />
+</div>
+
+## Add a Book — Rejected by the Rules Engine
+
+The `fiction` rule set requires an ISBN. This request omits it, so
+`validateItem` throws before anything is written — and the typed error travels
+to the client as a `400`:
+
+<div class="code-example-grid">
+  <CodeTabs
+    samples={[
+      {
+        label: "curl",
+        lang: "sh",
+        code: `curl -X POST http://localhost:3000/io \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "type": "command",
+    "from": "x:aB3dE5fG7hJ9kL1mN3pQ5rS7<token>",
+    "to": "books/add",
+    "data": {
+      "catalogId": "ctl_92hf30a1",
+      "price": 12.99,
+      "meta": { "title": "Dune", "author": "Frank Herbert" }
+    }
+  }'`,
+      },
+    ]}
+  />
+  <ResponsePanel
+    status="400 INVALID"
+    code={`{
+  "type": "invalid",
+  "message": "Field \\"isbn\\" is required",
+  "errors": []
+}`}
+  />
+</div>
+
+Add the ISBN and the same request succeeds:
+
+<div class="code-example-grid">
+  <CodeTabs
+    samples={[
+      {
+        label: "curl",
+        lang: "sh",
+        code: `curl -X POST http://localhost:3000/io \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "type": "command",
+    "from": "x:aB3dE5fG7hJ9kL1mN3pQ5rS7<token>",
+    "to": "books/add",
+    "data": {
+      "catalogId": "ctl_92hf30a1",
+      "price": 12.99,
+      "meta": {
+        "title": "Dune",
+        "author": "Frank Herbert",
+        "isbn": "978-0441172719",
+        "genre": "sci-fi"
+      }
+    }
+  }'`,
+      },
+      {
+        label: "TypeScript",
+        lang: "ts",
+        code: `const { addBook } = useBooks()
+
+await addBook({
+  catalogId: "ctl_92hf30a1",
+  price: 12.99,
+  meta: {
+    title: "Dune",
+    author: "Frank Herbert",
+    isbn: "978-0441172719",
+    genre: "sci-fi",
+  },
+})`,
+      },
+    ]}
+  />
+  <ResponsePanel
+    code={`{
+  "type": "reply",
+  "data": {
+    "success": true,
+    "id": "bk_7f3a2c9d"
+  }
+}`}
+  />
+</div>
+
+## List Books with Filters
+
+A paginated read. On the client this is the `useBooks` composable — refs in
+the query key re-run it when page or filters change:
+
+<div class="code-example-grid">
+  <CodeTabs
+    samples={[
+      {
+        label: "curl",
+        lang: "sh",
+        code: `curl -X POST http://localhost:3000/io \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "type": "command",
+    "from": "x:aB3dE5fG7hJ9kL1mN3pQ5rS7<token>",
+    "to": "books/list",
+    "data": {
+      "page": 1,
+      "pageSize": 10,
+      "filters": { "genre": "sci-fi" }
+    }
+  }'`,
+      },
+      {
+        label: "TypeScript",
+        lang: "ts",
+        code: `const { books, totalPages, applyFilters } = useBooks()
+
+applyFilters({ genre: "sci-fi" })
+// query re-runs; books/totalPages update reactively`,
+      },
+    ]}
+  />
+  <ResponsePanel
+    code={`{
+  "type": "reply",
+  "data": {
+    "books": [
+      {
+        "id": "bk_7f3a2c9d",
+        "price": 12.99,
+        "meta": {
+          "title": "Dune",
+          "genre": "sci-fi"
+        }
+      }
+    ],
+    "total": 17,
+    "totalPages": 2
+  }
+}`}
+  />
+</div>
+
+## Liveness Ping
+
+The one message that skips the agent entirely — the transport echoes the data
+back, making it a dependency-free health probe:
+
+<div class="code-example-grid">
+  <CodeTabs
+    samples={[
+      {
+        label: "curl",
+        lang: "sh",
+        code: `curl -X POST http://localhost:3000/io \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "type": "command",
+    "from": "x:aB3dE5fG7hJ9kL1mN3pQ5rS7anonymous",
+    "to": "io/ping",
+    "data": { "echo": "ok" }
+  }'`,
+      },
+    ]}
+  />
+  <ResponsePanel code={`{ "echo": "ok" }`} />
+</div>

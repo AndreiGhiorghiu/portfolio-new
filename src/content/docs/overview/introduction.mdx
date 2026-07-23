@@ -1,0 +1,79 @@
+---
+title: Introduction
+description: >-
+  Agent Marketplace is a full-stack TypeScript system organized around messages
+  instead of routes. This section explains the core idea, the vocabulary of the
+  system, and why the domain is deliberately thin.
+badges: [MESSAGE-ORIENTED, TYPE-SAFE, MONOREPO]
+---
+
+## The Core Idea
+
+Most web applications are organized around **routes**: a URL plus an HTTP verb
+maps to a handler. This system is organized around **messages** instead. The
+unit of the system is a typed message with an intent, and there is exactly
+**one** transport endpoint — `POST /io` — that every message goes through.
+
+That one decision drives everything else:
+
+- There is a **single place** to authenticate, authorize, and validate.
+- Operations are uniform and **composable** — one operation can invoke another.
+- The same object — an **Agent** — can both *send* messages (acting as a
+  client) and *process* them (acting as a server). Client and server literally
+  share that class.
+- The `from`/`to` envelope addresses *agents and operations*, not URLs — the
+  shape you would need for agents to talk to each other, not just
+  browser-to-server.
+
+If you know the **actor model** (Erlang, Akka), **CQRS** (commands vs.
+queries), or a **message bus**, this will feel familiar: it is a pragmatic
+blend of those ideas applied to a full-stack TypeScript app.
+
+## The Demo Domain
+
+The example domain is a **bookstore marketplace**: sellers publish *catalogs*
+of *books*, validated by a YAML *rules engine*; buyers browse them. The domain
+is deliberately thin — the point of the project is the architecture underneath
+it, and a small domain keeps that architecture legible.
+
+## Vocabulary
+
+| Concept | What it is |
+| --- | --- |
+| **Agent** | A participant in the network that can both provide and consume operations. One class, used as sender on the client and processor on the server. |
+| **Message** | An intent. The only thing that crosses the wire: `{ type, from, to, data }`. |
+| **Worker** | Executes exactly one message in the security context of one identity — the per-request sandbox. |
+| **Operation** | A single capability: a module with optional `input`/`output` zod schemas and a default handler. |
+| **Service** | A folder of related operations plus its database schema — `accounts`, `catalogs`, `books`. |
+| **Identity token** | A portable, AES-GCM-encrypted proof of who you are. Stateless — no session table. |
+| **Hub** | The URL an agent sends to (here, `/io`). |
+| **Rules** | Declarative, per-catalog YAML validation — data, not code. |
+
+## The Message Envelope
+
+Everything that crosses the wire is one of four message types:
+
+```ts
+type Message = {
+  type: "command" | "query" | "reply" | "event"
+  from: string   // <network-id (28 bytes)><encrypted identity token | "anonymous">
+  to:   string   // operation name, e.g. "books/list"
+  data: Record<string, any>
+}
+```
+
+- **command** — "do this" (a state change)
+- **query** — "give me this" (a read)
+- **reply** — the response to a command or query
+- **event** — "this happened" (reserved for the streaming future)
+
+"Intent" matters: a message expresses what the sender *wants*; whether it
+succeeds depends on authorization, validation, and the operation itself.
+
+## How to Read These Docs
+
+The **System Overview** section covers the big picture. **Frontend** and
+**Backend** walk through each half of the stack with real code from the
+repository. **Infrastructure** describes the current local-first setup and the
+proposed cloud adaptation path. **Examples** collects runnable request/response
+walkthroughs and data models.

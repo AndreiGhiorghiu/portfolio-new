@@ -1,0 +1,65 @@
+---
+title: Routing
+description: >-
+  Vue Router with lazy-loaded views and a single global guard — routes declare
+  whether they need authentication, and the guard redirects to login with the
+  intended destination preserved.
+badges: [VUE-ROUTER, LAZY-LOADED]
+---
+
+## Route Table
+
+Every view is a dynamic import, so each route becomes its own chunk and the
+initial bundle stays small. Private routes are marked declaratively with
+`meta: { auth: true }`:
+
+```ts
+// client/src/router.ts
+import { createRouter, createWebHistory } from "vue-router"
+import { useAuthStore } from "~/stores/auth"
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes: [
+    { path: "/", component: () => import("~/views/Home.vue") },
+    { path: "/login", component: () => import("~/views/Login.vue") },
+    { path: "/register", component: () => import("~/views/Register.vue") },
+    {
+      path: "/catalogs",
+      component: () => import("~/views/Catalogs.vue"),
+      meta: { auth: true },
+    },
+    {
+      path: "/books",
+      component: () => import("~/views/Books.vue"),
+      meta: { auth: true },
+    },
+  ],
+})
+
+// private routes require an authenticated session
+router.beforeEach(to => {
+  const auth = useAuthStore()
+  if (to.meta.auth && !auth.isAuthenticated) {
+    return { path: "/login", query: { redirect: to.fullPath } }
+  }
+  return true
+})
+
+export default router
+```
+
+## Design Notes
+
+- **One guard, declarative routes.** Authorization intent lives on the route
+  definition (`meta.auth`), not scattered across components. Adding a new
+  private page is one flag.
+- **Redirect preservation.** The guard passes the intended destination as
+  `?redirect=`, so a successful login can return the user where they were
+  headed.
+- **Session, not permissions.** The router only asks "is anyone logged in?" —
+  fine-grained authorization (who may call `books/add`) is enforced
+  server-side by the agent's capability map. The client never becomes the
+  security boundary.
+- **Guard reads the store lazily.** `useAuthStore()` is called inside the
+  guard, after Pinia is installed — a subtle but standard ordering constraint.

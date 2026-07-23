@@ -1,0 +1,93 @@
+---
+title: Application Shell
+description: >-
+  The client is a Vue 3 SPA with a framework-light core. Everything that talks
+  to the outside world — the agent, the IndexedDB store, the query client —
+  lives in a small application layer that the rest of the app builds on.
+badges: [VUE-3, VITE, INDEXEDDB]
+---
+
+## The Application Layer
+
+`client/src/application/` contains the three pieces of plumbing every feature
+relies on. None of them know anything about books or catalogs:
+
+| Module | Responsibility |
+| --- | --- |
+| `agent.ts` | The send-only protocol agent — the app's single connection to the server |
+| `store.ts` | An IndexedDB-backed key/value store for persistent client state |
+| `query.ts` | The TanStack Query client and the `command()` helper |
+
+## The Client Agent
+
+The client instantiates the **same `Agent` class the server runs** — but as a
+sender only. It carries no encryption key, no operations, and no database.
+Just the shared protocol:
+
+```ts
+// client/src/application/agent.ts
+import { createAgent, generate as genIdx } from "@market/shared"
+import store from "./store"
+
+// the client agent only ever sends messages — it carries no encryption key,
+// no operations, and no database. Just the shared protocol.
+const id = store.ensure("agent", genIdx())
+const hub = new URL("/io", location.origin).toString()
+
+export const agent = createAgent({ id, hub, operations: {} })
+```
+
+The agent's network id (`x:…`) is generated once and persisted, so the client
+keeps a stable identity across reloads while remaining disposable by design.
+
+## Persistent State: the IndexedDB Store
+
+`store.ts` is a small cache-through key/value store on top of `idb-keyval`.
+It hydrates from IndexedDB on boot and pushes writes back, with a guard so
+nothing persists before hydration completes:
+
+```ts
+// client/src/application/store.ts (excerpt)
+export const store = {
+  set(key: string, value: any): void {
+    cache[key] = value
+    // only persist after hydration so we don't clobber data before pull()
+    if (hydrated) {
+      this.push().then(() => channels.send(key, value))
+    }
+  },
+
+  // ensure a value exists, returning the existing or newly-set value
+  ensure<T>(key: string, value: T): T {
+    if (!cache[key]) this.set(key, value)
+    return cache[key]
+  },
+
+  // load the cache from IndexedDB
+  async pull() {
+    const data = await idb.get(storeKey)
+    Object.assign(cache, data)
+    hydrated = true
+    await this.push()
+    return cache
+  },
+}
+```
+
+It stores exactly two kinds of things: the **agent id** and the **auth
+session** (token, username, role). Subscribers can watch keys via the shared
+pub/sub `channels` helper — the same utility the protocol package uses for
+agent events.
+
+## Boot Sequence
+
+1. `store.pull()` hydrates the cache from IndexedDB.
+2. The agent is created with the persisted (or freshly generated) id.
+3. The Pinia auth store's `init()` restores a persisted session, if any
+   (see [State Management](/docs/frontend/state-management/)).
+4. The router mounts the requested view; guarded routes redirect to `/login`
+   when no session exists.
+
+The shell stays intentionally small: views and composables never touch
+`fetch`, IndexedDB, or tokens directly — they compose the three application
+modules instead.

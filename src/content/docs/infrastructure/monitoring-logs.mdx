@@ -1,0 +1,75 @@
+---
+title: Monitoring & Logs
+description: >-
+  Because every operation flows through one dispatch point, the system has a
+  single natural seam for logging, tracing and metrics. This page covers what
+  is instrumented today and the proposed production observability wiring.
+badges: [STRUCTURED-LOGS, OPENTELEMETRY, METRICS]
+status: proposed
+---
+
+## What Exists Today
+
+- **HTTP logging** — Hono's `logger()` middleware records every request on the
+  single `/io` route.
+- **Error trail** — each `Worker` accumulates `[operation, cause]` pairs in
+  `worker.errors`, so a failed composition shows *which* step failed.
+- **Scrubbed responses** — the central error handler logs the full error
+  server-side (`console.error("IO Error:", …)`) but strips stack traces before
+  replying, and maps everything to a typed `{ type, message, errors }` shape.
+- **Liveness** — `io/ping` answers without touching the database: a free
+  health probe.
+
+## The Architectural Advantage
+
+In a route-per-resource API, instrumentation is middleware discipline — every
+route must remember it. Here, **every operation call already passes through
+`Worker.processTask`**, including internal `system` composition calls. One
+wrapper at that seam observes the entire system:
+
+```ts
+// proposed: instrumentation at the single dispatch seam
+async processTask(operation, data, asSystem) {
+  const span = tracer.startSpan(`op:${operation}`, {
+    attributes: {
+      "op.system": asSystem,
+      "op.caller": this.stack.at(-1)?.[0] ?? "entry",
+      "identity.role": this.identity?.role ?? "anonymous",
+    },
+  })
+  const start = performance.now()
+
+  try {
+    return await originalProcessTask.call(this, operation, data, asSystem)
+  } catch (error) {
+    span.recordException(error)
+    throw error
+  } finally {
+    opDuration.record(performance.now() - start, { operation })
+    span.end()
+  }
+}
+```
+
+Because operations compose, the spans nest naturally:
+`accounts/register` → `accounts/create` → `identities/create` →
+`accounts/connect` becomes one trace with four child spans — the command bus
+gives you distributed-tracing-style visibility inside a single process.
+
+## Proposed Production Stack
+
+| Signal | Tool | Notes |
+| --- | --- | --- |
+| Structured logs | pino → collector | Replace `console.error`; one JSON line per message with `type`, `to`, role, duration, outcome |
+| Traces | OpenTelemetry SDK | Span per operation at the worker seam; W3C context propagated from the client's `command()` helper |
+| Metrics | OTel metrics → Prometheus | `op_duration`, `op_errors_total{type}`, revocation-list hit rate |
+| Alerts | On the error taxonomy | The typed errors make alert rules precise: page on `unknown` spikes, ignore expected `invalid` validation noise |
+
+## What to Watch First
+
+1. **`unknown`-type replies** — anything uncaught; should be near zero.
+2. **p95 `op_duration` for `books/list`** — the hot read path.
+3. **Auth failures per minute** — `unauthenticated` + `unauthorized` spikes
+   signal either an attack or a broken client build.
+4. **Ping latency from the ingress** — the deploy-gate signal used by
+   [CI / CD](/docs/infrastructure/ci-cd-pipeline/).

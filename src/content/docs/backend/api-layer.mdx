@@ -1,0 +1,116 @@
+---
+title: API Layer
+description: >-
+  The entire HTTP surface is one Hono route — POST /io. Every message is
+  zod-validated at the door, dispatched to the agent, and every error leaves
+  through one handler with stack traces scrubbed.
+badges: [HONO, SINGLE-ENDPOINT, ZOD]
+---
+
+## One Endpoint
+
+The whole transport layer fits on a screen. The envelope is validated before
+anything else happens; a liveness fast-path answers `io/ping` without touching
+the agent; everything else is dispatched:
+
+```ts
+// server/src/http.ts
+export const http = new Hono()
+
+http.onError(errorHandler)
+
+function ensureMessage(source: unknown) {
+  try {
+    return zMessage.parse(source) as Message
+  } catch (cause) {
+    throw new InvalidError("invalid message format", { cause })
+  }
+}
+
+// every command/query enters through this single endpoint
+http.post("/io", async ({ req, json }) => {
+  const message = ensureMessage(await req.json())
+
+  // liveness check
+  if (message.type === "command" && message.to === "io/ping") {
+    return json(message.data)
+  }
+
+  const data = await agent.process(message)
+
+  const reply: Message = {
+    type: "reply",
+    from: agent.id,
+    to: message.from,
+    data,
+  }
+
+  return json(reply)
+})
+```
+
+Note the symmetry: the reply is itself a `Message`, addressed back to the
+sender. The transport doesn't know what operations exist — routing happens on
+`message.to` inside the agent, not in HTTP.
+
+## The Envelope Schema
+
+The wire contract lives in the shared package, so the client and server can
+never drift apart:
+
+```ts
+// shared/src/domain.ts
+export const zMessage = z.object({
+  type: zMessageType,          // "command" | "query" | "reply" | "event"
+  from: zMessageFrom,          // x:… network id + token, 37–512 chars
+  to: String64,                // operation name
+  data: AnyRecord,
+  meta: z.optional(AnyRecord),
+})
+```
+
+## Error Handling
+
+All failures leave through one Hono `onError` handler. It maps the typed error
+taxonomy (`unauthenticated`, `unauthorized`, `invalid`, `not_found`, `failed`,
+`unknown`, …) to a uniform reply shape — and **strips stack traces** before
+anything reaches the client:
+
+```ts
+// server/src/http.error.ts (excerpt)
+export const errorHandler: ErrorHandler = (error, { json }) => {
+  console.error("IO Error:", error)
+
+  // validation errors
+  if (isValidationError(error)) {
+    const invalid = new InvalidError(error.message, { errors: error.issues })
+    return json(toReplyError(invalid), 400)
+  }
+
+  if (error instanceof InvalidError) {
+    return json(toReplyError(error), 400)
+  }
+
+  // unknown or uncaught errors
+  const unknown = new UnknownError(error.message, { cause: error })
+  return json(toReplyError(unknown), 500)
+}
+```
+
+Clients always receive the same shape — `{ type, message, errors }` — which
+the UI can surface directly (a rules-engine rejection like *"Field "isbn" is
+required"* travels all the way to the form).
+
+## Why a Single Endpoint?
+
+- **One checkpoint** for authentication, authorization, and validation — no
+  route can forget its middleware.
+- **Uniform requests** make cross-cutting tooling trivial: logging, rate
+  limiting, tracing, and replay all hook one seam.
+- **The envelope generalizes**: `from`/`to` address agents and operations, so
+  the same transport supports future agent-to-agent relay — something a
+  URL-per-resource API can't express.
+
+The trade-off — losing per-route HTTP semantics (verbs, status-code variety,
+URL caching) — is a conscious one: this API is a command bus, not a
+hypermedia surface.

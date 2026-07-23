@@ -1,0 +1,140 @@
+---
+title: Data Models
+description: >-
+  The complete data surface — four database tables plus the two wire-level
+  schemas (Message and TokenIdentity) that everything else derives from.
+badges: [DRIZZLE, ZOD, REFERENCE]
+---
+
+## Entity Overview
+
+```
+accounts 1 ──── n identities        (login credentials)
+accounts 1 ──── n catalogs          (via catalogs.owner)
+catalogs 1 ──── n books             (cascade delete)
+revoked_tokens                      (logout blocklist, standalone)
+profiles n ──── 1 accounts          (display data)
+```
+
+## Wire Schemas (shared)
+
+Everything that crosses the wire derives from two zod schemas in
+`shared/src/domain.ts` — the types are inferred, so client and server can
+never disagree:
+
+```ts
+export const zMessage = z.object({
+  type: zMessageType,   // "command" | "query" | "reply" | "event"
+  from: zMessageFrom,   // x:… — 28-byte network id + token | "anonymous"
+  to: String64,         // operation name, e.g. "books/list"
+  data: AnyRecord,
+  meta: z.optional(AnyRecord),
+})
+
+export const zIdentity = z.object({
+  accountId: String64,
+  identifier: String64,
+  role: z.enum(["BUYER", "SELLER", "ADMIN"]).default("BUYER"),
+})
+```
+
+`TokenIdentity` is what lives *inside* the encrypted token — it never exists
+client-side in readable form.
+
+## accounts
+
+```ts
+// server/src/services/accounts/schema.ts (excerpt)
+export const accounts = table("accounts", {
+  type: text("type", { enum: ["SYSTEM", "MANAGER", "OPERATOR", "MEMBER"] }).notNull(),
+  status: text("status", { enum: ["INACTIVE", "ACTIVE", "SUSPENDED"] }).notNull(),
+  role: text("role", { enum: ["BUYER", "SELLER", "ADMIN"] }).notNull().default("BUYER"),
+
+  balance: real("balance").notNull().default(0.0),
+
+  privateKey: text("private_key").notNull(),
+  publicKey: text("public_key").notNull(),
+
+  createdAt,
+  updatedAt,
+  id,
+})
+```
+
+Every account carries an **ECDSA P-384 keypair** from creation — groundwork
+for signed messages. `status` gates login (`accounts/connect` rejects anything
+not `ACTIVE`).
+
+## identities
+
+Credentials are separated from accounts, so one account can hold multiple
+ways to authenticate:
+
+```ts
+export const identities = table("identities", {
+  type: text("type", { enum: ["SECRET", "TEMPORARY"] }).notNull(),
+  identifier: text("identifier").notNull(),
+  token: text("secret").unique().notNull(),   // PBKDF2-SHA384 hash
+  settings: blob("settings", { mode: "json" }).default("{}"),
+
+  accountId: text("account_id")
+    .notNull()
+    .references(() => accounts.id, { onDelete: "cascade" }),
+  /* … timestamps, id … */
+})
+```
+
+`token` stores the **hash** of the secret, never the secret — and the
+`TEMPORARY` type reserves space for one-time tokens (invites, resets).
+
+## catalogs & books
+
+```ts
+export const catalogs = table("catalogs", {
+  id: text("id").unique().primaryKey().default(uniqId),
+  name: text("name").notNull(),
+  owner: text("owner").notNull(),           // accountId — checked in operations
+  fee: real("fee").default(0),
+  rules: text("rules"),                     // e.g. "fiction" → rules/fiction.yaml
+  createdAt,
+  updatedAt,
+})
+
+export const books = table("books", {
+  price: real("price").notNull(),
+  catalogId: text("catalog_id")
+    .notNull()
+    .references(() => catalogs.id, { onDelete: "cascade" }),
+  meta: text("meta").notNull().default("{}"), // JSON: { title, author, isbn, genre }
+  id,
+  createdAt,
+  updatedAt,
+})
+```
+
+The `meta` JSON column is the schema-flexibility play: **one table serves
+every category**, with shape enforced per-catalog by the YAML rules engine at
+the operation boundary rather than by the database (see
+[Data Access Layer](/docs/backend/data-access-layer/)).
+
+## revoked_tokens
+
+The logout blocklist — the piece that keeps stateless sessions honest:
+
+```ts
+export const revokedTokens = table("revoked_tokens", {
+  tokenHash: text("token_hash").primaryKey(),  // deterministic SHA-384
+  revokedAt: createdAt,
+})
+```
+
+The hash is **deterministic on purpose**: a lookup key must be reproducible.
+In the cloud adaptation this table becomes a Redis set with a TTL (see
+[Cloud Architecture](/docs/infrastructure/cloud-architecture/)).
+
+## Client-Side State (for completeness)
+
+The browser persists exactly one IndexedDB record — a key/value cache holding
+the agent id and the auth session (`auth/token`, `auth/username`,
+`auth/role`). Everything else is either in-memory (Pinia) or cached and
+disposable (TanStack Query).

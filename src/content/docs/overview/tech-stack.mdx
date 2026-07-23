@@ -1,0 +1,77 @@
+---
+title: Tech Stack
+description: >-
+  A pnpm monorepo with three TypeScript packages — a dependency-free protocol
+  package shared by a Hono server and a Vue 3 client. Every choice keeps the
+  protocol isomorphic and the client bundle free of server code.
+badges: [TYPESCRIPT, PNPM, ESM, NODE-20+]
+---
+
+## Workspace Layout
+
+The repository is a **pnpm workspace** with three packages. Dependencies point
+in one direction only: both apps depend on the protocol, never on each other.
+
+```
+agent-marketplace/
+├── shared/    @market/shared   the protocol (zod only)
+├── server/    @market/server   Hono + Drizzle + SQLite
+├── client/    @market/client   Vue 3 SPA
+└── pnpm-workspace.yaml
+```
+
+| Package | Role | Key dependencies |
+| --- | --- | --- |
+| `@market/shared` | Message protocol: `Agent`, `Worker`, schemas, crypto, id generation, pub/sub | `zod` — nothing else |
+| `@market/server` | HTTP server, services, rules engine | `hono`, `drizzle-orm`, `better-sqlite3`, `yaml`, `modern-errors` |
+| `@market/client` | Single-page app | `vue`, `pinia`, `@tanstack/vue-query`, `vue-router`, `idb-keyval` |
+
+## The Stack, Layer by Layer
+
+| Layer | Choice | Why |
+| --- | --- | --- |
+| Language | **TypeScript 5** (strict, ESM) | End-to-end types — the same `Message` type on both sides of the wire |
+| Runtime | **Node.js ≥ 20** | Native Web Crypto (`crypto.subtle`), so the protocol's crypto runs in Node *and* the browser |
+| HTTP | **Hono 4** | Tiny, fast, standards-based — the API surface is one route, so a micro-framework fits |
+| Validation | **Zod** | Schemas double as runtime validators and inferred types |
+| ORM | **Drizzle 0.41** | Typed SQL over SQLite, migrations via drizzle-kit |
+| Database | **SQLite** (better-sqlite3) | Local-first; swappable for Postgres by changing the Drizzle dialect |
+| Frontend | **Vue 3.5** + Vite 6 | Composition API, lazy routes, fast dev loop |
+| Client state | **Pinia 2** | Session state (auth flag, role, username) |
+| Server cache | **TanStack Vue Query 5** | Query caching + invalidation, kept separate from client state |
+| Persistence | **idb-keyval** | IndexedDB store for the agent id and auth token |
+| Testing | **Vitest 3** | Same runner for protocol and server suites |
+
+## The Dependency Inversion
+
+The most deliberate piece of engineering: the protocol package must work on
+both sides of the wire, but a naive `Agent.process` needs the database (to
+verify identities and check revocations) — and a database dependency would leak
+into the client bundle.
+
+The fix is **dependency inversion**. The agent takes injected hooks instead of
+importing anything:
+
+```ts
+// server/src/agent.ts — the HOST injects policy into the protocol
+export const agent = new Agent({
+  operations,
+  encryptionKey,                            // server only
+  permissions: { BUYER, SELLER, ADMIN: ["*"] }, // injected policy
+  publicOperations: ["accounts/connect", "accounts/register"],
+  isTokenRevoked,                           // server only, DB-backed
+})
+```
+
+```ts
+// client/src/application/agent.ts — the client injects nothing
+const id = store.ensure("agent", genIdx())
+const hub = new URL("/io", location.origin).toString()
+
+export const agent = createAgent({ id, hub, operations: {} })
+```
+
+The result: `@market/shared` is genuinely storage- and domain-agnostic, the
+client bundle contains **zero** server or database code (verifiable in the
+build output), and authorization policy is owned by the server — not baked into
+the protocol.

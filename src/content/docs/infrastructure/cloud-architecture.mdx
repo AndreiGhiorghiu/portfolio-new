@@ -1,0 +1,107 @@
+---
+title: Cloud Architecture
+description: >-
+  The system currently runs local-first — one Node process, one SQLite file.
+  This page maps the honest, low-friction path to a cloud deployment, and
+  explains why the architecture makes that path short.
+badges: [POSTGRES, REDIS, DOCKER, KUBERNETES]
+status: proposed
+---
+
+## Why This Architecture Scales Cheaply
+
+Three properties of the current design do the heavy lifting:
+
+1. **Stateless sessions.** Identity travels as an AES-GCM token inside every
+   message. Any replica holding the encryption key can authenticate any
+   request — no session affinity, no sticky load balancing.
+2. **One endpoint.** `POST /io` is the entire surface: one health check, one
+   route to load-balance, one place to rate-limit at the ingress.
+3. **Injected infrastructure.** The protocol takes `encryptionKey` and
+   `isTokenRevoked` as constructor hooks — swapping SQLite for Postgres or the
+   blocklist for Redis changes the *host wiring*, not the protocol.
+
+## The Mapping
+
+| Today (local-first) | Cloud target | Why the swap is small |
+| --- | --- | --- |
+| SQLite (better-sqlite3) | **PostgreSQL** (managed) | Drizzle dialect change + regenerated migrations; queries stay typed |
+| Revocation table | **Redis** SET with TTL | `isTokenRevoked` is an injected hook — one function body changes |
+| Single Node process | **Docker** image, N replicas | Server is already a self-contained ESM process on a configurable port |
+| `.env` + CLI args | Secret manager / env injection | `config.ts` already zod-validates env at boot and fails fast |
+| — | **Kubernetes** / container apps | Stateless pods behind one Service; `io/ping` is the readiness probe |
+
+## Target Topology
+
+```
+                        ┌──────────────────────────────────────────┐
+  Browser (Vue SPA) ───►│  CDN / static hosting (client build)     │
+        │               └──────────────────────────────────────────┘
+        │ POST /io
+        ▼
+  ┌───────────────┐     ┌──────────────────────────────────────────┐
+  │  Ingress / LB │ ───►│  server pods (N replicas, stateless)     │
+  │  rate limit   │     │  Hono → Agent → Worker → operations      │
+  └───────────────┘     └───────┬──────────────────────┬───────────┘
+                                │                      │
+                                ▼                      ▼
+                        ┌──────────────┐       ┌──────────────┐
+                        │  PostgreSQL  │       │    Redis     │
+                        │  (Drizzle)   │       │  revocations │
+                        └──────────────┘       └──────────────┘
+```
+
+## The Redis Revocation Hook
+
+The clearest example of how little changes. Today the hook queries SQLite;
+in the cloud it becomes a Redis membership check with a TTL matched to token
+lifetime:
+
+```ts
+// proposed: server/src/agent.ts wiring for the cloud
+async function isTokenRevoked(token: string) {
+  const tokenHash = await stringToHash(token)
+  return (await redis.exists(`revoked:${tokenHash}`)) === 1
+}
+
+// accounts/disconnect adds:  redis.set(`revoked:${hash}`, 1, { EX: tokenTtl })
+```
+
+The protocol package is untouched — the same `Agent` class runs in every pod.
+
+## Containerization
+
+The proposed image is a standard two-stage build:
+
+```dockerfile
+# proposed: Dockerfile
+FROM node:22-slim AS build
+RUN corepack enable
+WORKDIR /app
+COPY . .
+RUN pnpm install --frozen-lockfile && pnpm --filter @market/server build
+
+FROM node:22-slim
+WORKDIR /app
+COPY --from=build /app/server/dist ./
+ENV PORT=3000
+EXPOSE 3000
+CMD ["node", "main.js"]
+```
+
+The client build is static files — it deploys to any CDN and needs no
+container at all.
+
+## What Would Genuinely Need Work
+
+Honesty section: the swap is small but not free.
+
+- **Migrations** must be regenerated for the Postgres dialect and run as a
+  release step instead of on boot.
+- **better-sqlite3 is synchronous**; the Postgres driver is async — the data
+  layer's call sites are already `async`, but the `db` bootstrap changes.
+- **Key management**: the committed dev `ENCRYPTION_KEY` moves to a secret
+  store, with a rotation story (see
+  [Security](/docs/infrastructure/security/)).
+- **Event messages** (`type: "event"`) would want a pub/sub backbone
+  (Redis Streams or NATS) once streaming lands.

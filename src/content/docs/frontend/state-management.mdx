@@ -1,0 +1,91 @@
+---
+title: State Management
+description: >-
+  Server state and client state are different things, and the client treats
+  them differently — TanStack Query owns the server cache, Pinia owns the
+  session. They never bleed into each other.
+badges: [PINIA, TANSTACK-QUERY]
+---
+
+## The Split
+
+| Concern | Owner | Examples |
+| --- | --- | --- |
+| **Server cache** | TanStack Vue Query | book lists, catalogs — anything fetched |
+| **Session state** | Pinia (`stores/auth.ts`) | logged-in flag, username, role |
+| **Persistent state** | IndexedDB store | agent id, auth token |
+
+This is the deliberate point of the client architecture: queries cache by key
+and mutations invalidate them; the session is a handful of refs restored from
+IndexedDB on boot. Neither system reaches into the other.
+
+## Server Cache: Query Composables
+
+Each view pairs with one data-access composable in `client/src/io/`. Reactive
+refs inside the query key make the query re-run automatically when pagination
+or filters change:
+
+```ts
+// client/src/io/useBooks.ts (excerpt)
+const query = useQuery({
+  // refs in the key make the query re-run when page/filters change
+  queryKey: ["books", page, pageSize, filters],
+  queryFn: () =>
+    command<BooksPage>("books/list", {
+      page: page.value,
+      pageSize: pageSize.value,
+      filters: Object.keys(filters.value).length ? filters.value : undefined,
+    }),
+  placeholderData: keepPreviousData,
+})
+
+const addMutation = useMutation({
+  mutationFn: (input: { catalogId: string; price: number; meta: Record<string, any> }) =>
+    command<{ success: boolean; id: string }>("books/add", input),
+  onSuccess: () => qc.invalidateQueries({ queryKey: ["books"] }),
+})
+```
+
+`keepPreviousData` keeps the current page on screen while the next one loads;
+the mutation's `onSuccess` invalidates every `["books", …]` key so lists
+refetch after a write.
+
+## Session State: the Pinia Auth Store
+
+The auth store owns login, logout, and session restoration. Its most
+interesting move is how it injects the token into the protocol: the server's
+token is already encrypted, so the client simply overrides the agent's
+`encrypt` step to return it verbatim:
+
+```ts
+// client/src/stores/auth.ts (excerpt)
+// inject the (already server-encrypted) token into every outgoing message
+function applyToken(token: string) {
+  agent.setIdentity({ accountId: "", identifier: "", role: "BUYER" })
+  agent.encrypt = async () => token
+}
+
+// restore a persisted session on boot
+function init() {
+  const token = store.get<string>(TOKEN_KEY)
+  if (token) {
+    applyToken(token)
+    isAuthenticated.value = true
+    username.value = store.get<string>(USERNAME_KEY) ?? ""
+    role.value = store.get<string>(ROLE_KEY) ?? "BUYER"
+  }
+}
+```
+
+Login and registration share one `authenticate()` path that differs only in
+the operation it targets (`accounts/connect` vs `accounts/register`), and
+logout sends `accounts/disconnect` before clearing local state — tolerating a
+failed network call, because local state must clear regardless.
+
+## Why Not One Store for Everything?
+
+Putting fetched data in Pinia means hand-rolling caching, invalidation,
+deduplication and refetch logic that Query already solves. Putting session
+state in Query means modelling "logged in" as a fake server resource. Keeping
+the two systems separate keeps both trivial — the auth store is under a
+hundred lines, and no composable manages a cache by hand.

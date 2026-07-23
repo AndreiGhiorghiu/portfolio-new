@@ -1,0 +1,75 @@
+---
+title: UI / Design System
+description: >-
+  Views stay thin by design — each screen pairs with exactly one data-access
+  composable, and a single command() helper is the only call site that talks
+  to the server. The pattern scales by repetition, not abstraction.
+badges: [THIN-VIEWS, COMPOSABLES]
+---
+
+## The Pattern: View + Composable Pairs
+
+Every screen follows the same shape:
+
+```
+views/Books.vue      ──uses──►  io/useBooks.ts      ──calls──►  command()
+views/Catalogs.vue   ──uses──►  io/useCatalogs.ts   ──calls──►  command()
+```
+
+- **Views** (`client/src/views/`) render state and forward user events. They
+  contain no fetching, no caching, and no token handling.
+- **Composables** (`client/src/io/`) are the data-access layer: one per view,
+  wrapping TanStack Query and exposing exactly what the view needs — data as
+  `computed` refs, plus a few named actions.
+
+A view's entire contract with the data layer looks like this:
+
+```ts
+const {
+  books, page, totalPages, total,   // computed state
+  isFetching, error,                // request status
+  goToPage, applyFilters, addBook,  // actions
+} = useBooks()
+```
+
+## One Door to the Server
+
+The `command()` helper in `application/query.ts` is the **single call site**
+that talks to the agent. Every composable goes through it:
+
+```ts
+// client/src/application/query.ts
+// send a command/query to the server agent and return the reply payload
+export async function command<R = any, D extends Record<string, any> = Record<string, any>>(
+  to: string,
+  data: D = {} as D
+): Promise<R> {
+  const reply = await agent.send<Msg<"command", D>, Msg<"reply", R & Record<string, any>>>({
+    type: "command",
+    to,
+    data,
+  })
+  return reply.data as R
+}
+```
+
+Because everything funnels through one function, cross-cutting concerns —
+attaching the identity token, unwrapping the reply envelope, surfacing typed
+errors — live in exactly one place.
+
+## Why Repetition Beats Abstraction Here
+
+`useBooks` and `useCatalogs` look similar, and that is deliberate. A generic
+`useResource()` factory would save a few lines but cost the ability to shape
+each composable to its view (books need pagination and filters; catalogs need
+rules metadata). With the transport already unified in `command()`, the
+composables are cheap to write and easy to read — the right trade for a
+codebase meant to be understood quickly.
+
+## Styling Approach
+
+Views use scoped component styles with a small set of shared conventions
+rather than a heavyweight component library — consistent with the project's
+bias toward a legible, minimal surface area. The interesting design system in
+this project is the *architecture* one: the view/composable/command layering
+is the contract every new screen follows.

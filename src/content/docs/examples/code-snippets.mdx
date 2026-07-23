@@ -1,0 +1,142 @@
+---
+title: Code Snippets
+description: >-
+  The load-bearing patterns of the codebase in isolation — the anatomy of an
+  operation, the rules validator, the client's single call site, and the
+  pub/sub channels utility shared by both sides.
+badges: [PATTERNS, REFERENCE]
+---
+
+## Anatomy of an Operation
+
+Every capability in the system is this exact shape — a module with optional
+I/O schemas and a default handler that receives the worker as `io`:
+
+```ts
+// server/src/services/books/add.ts (structure)
+import type { IO } from "~/agent"
+import { z } from "@market/shared"
+
+export const input = z.object({
+  price: z.number(),
+  catalogId: z.string(),
+  meta: z.record(z.any()).optional(),
+})
+
+export const output = z.object({
+  success: z.boolean(),
+  id: z.string(),
+})
+
+export default async (io: IO, data: Input): Promise<Output> => {
+  // io.identity  — who is calling (or null)
+  // io.isSystem  — was this an internal, trusted call?
+  // io.do(...)   — call another operation WITH permission checks
+  // io.system()  — call another operation WITHOUT permission checks
+  /* … handler … */
+}
+```
+
+The worker guarantees `data` already passed `input.parse`, and whatever the
+handler returns must survive `output.parse` — the operation cannot receive a
+malformed request or leak an undeclared field.
+
+## The Rules Validator
+
+The whole rules engine is two small functions over a parsed YAML object.
+Per-field checks compose from six primitives:
+
+```ts
+// server/src/rules/validate.ts (excerpt)
+function validateMetaField(key, value, rule, prefix) {
+  if (rule.required && (value === undefined || value === null || value === "")) {
+    throw new InvalidError(`${prefix}Field "${key}" is required`)
+  }
+
+  if (value === undefined || value === null) return
+
+  const str = String(value)
+
+  if (rule.minLen !== undefined && str.length < rule.minLen) { /* … */ }
+  if (rule.maxLen !== undefined && str.length > rule.maxLen) { /* … */ }
+  if (rule.regex !== undefined && !new RegExp(rule.regex).test(str)) { /* … */ }
+  if (rule.enum !== undefined && !rule.enum.includes(str)) { /* … */ }
+  if (rule.contains !== undefined && !str.includes(rule.contains)) { /* … */ }
+}
+```
+
+Every failure is an `InvalidError` with a message written for end users —
+the same string the Vue form displays.
+
+## The Client's Single Call Site
+
+All server communication funnels through one generic function. Note what it
+does *not* do: no URLs, no headers, no token handling — the agent owns those:
+
+```ts
+// client/src/application/query.ts
+export async function command<R = any, D extends Record<string, any> = Record<string, any>>(
+  to: string,
+  data: D = {} as D
+): Promise<R> {
+  const reply = await agent.send<Msg<"command", D>, Msg<"reply", R & Record<string, any>>>({
+    type: "command",
+    to,
+    data,
+  })
+  return reply.data as R
+}
+```
+
+## Channels: One Pub/Sub, Both Sides
+
+A dependency-free topic map used by the agent for message events *and* by the
+client store for change subscriptions — the kind of small shared utility the
+isomorphic protocol package makes possible:
+
+```ts
+// shared/src/utils/channels.ts (shape)
+const channels = createChannels<Message>()
+
+// subscribe — returns an unsubscribe function
+const off = channels.add("reply/command", (message) => {
+  /* react to every command reply */
+})
+
+// publish
+channels.send("reply/command", reply)
+```
+
+The agent wires it into `send()`, so any part of the client can observe
+traffic without touching the transport:
+
+```ts
+// shared/src/createAgent.ts (excerpt)
+queueMicrotask(() => {
+  this.events.send(message.type, message)
+  this.events.send(`reply/${message.type}`, reply)
+})
+```
+
+## Fail-Fast Config
+
+Server configuration is a zod schema too — CLI args override env vars, and a
+missing `ENCRYPTION_KEY` stops the process before it can serve a request:
+
+```ts
+// server/src/config.ts (excerpt)
+export const zConfig = z.object({
+  db: z.string().default("./sqlite.db"),
+  port: z.coerce.number().default(3000),
+  migrate: z.boolean().default(false),
+  encryptionKey: z.string().min(1, "ENCRYPTION_KEY is required"),
+})
+
+// args take precedence, with env vars as a fallback
+const config = zConfig.safeParse(merged)
+
+if (!config.success) {
+  console.error(config.error.issues.map(e => e.message).join("\n"))
+  process.exit(1)
+}
+```

@@ -1,0 +1,87 @@
+---
+title: CI / CD Pipeline
+description: >-
+  The repository ships with typecheck, test and build scripts in every
+  package — the building blocks of a pipeline. This page lays out the proposed
+  GitHub Actions workflow that composes them into CI and a deploy path.
+badges: [GITHUB-ACTIONS, PNPM, VITEST]
+status: proposed
+---
+
+## What Exists Today
+
+Every stage of a pipeline already runs locally via workspace scripts:
+
+| Stage | Command | What it covers |
+| --- | --- | --- |
+| Install | `pnpm install --frozen-lockfile` | Reproducible dependency tree |
+| Typecheck | `pnpm typecheck` | `tsc`/`vue-tsc` across all three packages |
+| Test | `pnpm test` | Vitest — protocol suite (crypto, worker, channels) + server suite (endpoint, services, rules) |
+| Build | `pnpm build` | Production client bundle |
+| DB | `pnpm db:migrate` / `db:seed` | Schema migrations + demo data |
+
+CI is therefore composition, not invention.
+
+## Proposed Workflow
+
+```yaml
+# proposed: .github/workflows/ci.yml
+name: CI
+
+on:
+  push: { branches: [main] }
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+        env:
+          ENCRYPTION_KEY: ${{ secrets.TEST_ENCRYPTION_KEY }}
+      - run: pnpm build
+
+  image:
+    needs: verify
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/build-push-action@v6
+        with:
+          push: true
+          tags: ghcr.io/${{ github.repository }}/server:${{ github.sha }}
+```
+
+Deployment then follows the topology from
+[Cloud Architecture](/docs/infrastructure/cloud-architecture/): the image
+rolls out to the container platform; the client build uploads to the CDN.
+
+## Design Choices
+
+- **One `verify` job, not a matrix.** The monorepo's packages share a
+  lockfile and node version; splitting jobs per package would triple setup
+  time to parallelize seconds of work.
+- **Tests need a key.** The server suite boots the real agent, so CI supplies
+  a dedicated `TEST_ENCRYPTION_KEY` secret — never the committed dev key, and
+  never a production one.
+- **Migrations as a release step.** `pnpm db:migrate` runs against the target
+  database *before* the new image receives traffic, replacing the current
+  migrate-on-boot convenience flag.
+- **Image tagged by SHA.** Rollback is redeploying a previous tag — no
+  special tooling.
+
+## Release Gates
+
+1. Pull request → `verify` must pass (typecheck, both test suites, build).
+2. Merge to `main` → image built and pushed.
+3. Deploy → migrations, then rollout, watching the `io/ping` liveness route.
+4. Rollback trigger: elevated `unknown`-type error replies or failed pings
+   (see [Monitoring & Logs](/docs/infrastructure/monitoring-logs/)).

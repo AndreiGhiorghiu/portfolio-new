@@ -1,0 +1,93 @@
+---
+title: Security
+description: >-
+  A security-first architecture with one checkpoint for every request —
+  capability-based authorization, encrypted stateless sessions, uniform I/O
+  validation, and a working revocation path. Plus the honest hardening list.
+badges: [CAPABILITY-BASED, ZERO-TRUST-TOKENS, VALIDATED-IO]
+---
+
+## The Checkpoint Model
+
+Every message — there is no other way in — passes the same gauntlet:
+
+```
+POST /io
+  1. envelope parse        zMessage.parse(body)          reject malformed
+  2. authenticate          AES-GCM decrypt of token      identity or anonymous
+  3. revocation check      blocklist lookup              logged-out tokens die here
+  4. authorize             role → operations map         capability check
+  5. input validation      operation's zod input         reject bad shapes
+  6. ownership checks      inside the operation          e.g. catalog.owner
+  7. output validation     operation's zod output        can't leak undeclared fields
+```
+
+A route-based app enforces this with middleware discipline on every route.
+Here it is **structural** — no operation can opt out, because the worker is
+the only way operations run.
+
+## Authorization: Injected Capability Map
+
+The protocol doesn't know what a SELLER is. The server injects the policy —
+roles map to explicit operation lists, and anonymous callers get only the
+`publicOperations` allowlist:
+
+```ts
+// server/src/agent.ts (excerpt)
+const BUYER = [
+  "accounts/connect", "accounts/register", "accounts/disconnect",
+  "accounts/setCredentials",
+  "catalogs/list", "catalogs/listRules",
+  "books/list", "books/getById",
+]
+const SELLER = [
+  ...BUYER,
+  "catalogs/create", "catalogs/update", "catalogs/remove",
+  "books/add", "books/bulkAdd", "books/remove",
+]
+
+export const agent = new Agent({
+  operations,
+  encryptionKey,
+  permissions: { BUYER, SELLER, ADMIN: ["*"] },
+  publicOperations: ["accounts/connect", "accounts/register"],
+  isTokenRevoked,
+})
+```
+
+Deny-by-default falls out of the shape: an operation not in your role's list
+throws `access denied` before any handler code runs.
+
+## Defenses in Place
+
+- **Opaque tokens** — the client carries its identity but can never read or
+  mint one; only the server holds the AES-GCM key.
+- **Vague auth errors** — login failures return one message whether the
+  account is missing, inactive, or the secret is wrong (no user enumeration).
+- **Stack-trace scrubbing** — internals never reach the client; errors leave
+  as a typed `{ type, message, errors }`.
+- **Recursion guard** — a compromised or buggy composition cannot loop the
+  worker.
+- **Output schemas** — an operation cannot return more than it declares, which
+  kills accidental over-fetching leaks (password hashes, keys) at the seam.
+- **Secrets hygiene** — PBKDF2-SHA384 with per-secret salt and 10⁶ iterations;
+  ECDSA private keys stored per account for future signing, never sent out.
+
+## Honest Hardening List *(proposed)*
+
+What this reference architecture would add before real traffic:
+
+1. **Rate limiting** at the ingress — one endpoint makes the limit trivial to
+   express (per-IP and per-identity budgets on `/io`).
+2. **Key rotation** — versioned `ENCRYPTION_KEY` (kid embedded in the token)
+   so tokens survive rotation windows; dev key out of the repo and into a
+   secret manager.
+3. **Token expiry** — `TokenIdentity` currently has no `exp`; adding one
+   bounds the blocklist's required lifetime and enables short-lived sessions.
+4. **Payload limits & timeouts** — `RestrictedError` exists in the taxonomy;
+   wire it to actual body-size and per-operation time budgets.
+5. **Message signing** — the per-account ECDSA P-384 keypairs are the
+   groundwork for signed messages once agent-to-agent relay lands.
+6. **Audit trail** — the single dispatch seam (see
+   [Monitoring & Logs](/docs/infrastructure/monitoring-logs/)) is the natural
+   place to write an append-only log of privileged (`system`) calls.

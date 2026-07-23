@@ -1,0 +1,98 @@
+---
+title: Core Principles
+description: >-
+  Four principles run through every layer of the system — modularity,
+  scalability, security and observability. Each one maps to a concrete
+  mechanism in the code, not a slogan.
+badges: [MODULAR, SCALABLE, SECURE, OBSERVABLE]
+---
+
+import PrincipleCards from "../../../components/PrincipleCards.astro";
+
+<PrincipleCards
+  items={[
+    {
+      icon: "cube",
+      title: "Modularity",
+      text: "Feature-based services and self-registering operations. Adding a feature is one module — zero router wiring.",
+    },
+    {
+      icon: "chart",
+      title: "Scalability",
+      text: "Stateless encrypted sessions and one uniform endpoint make horizontal scaling a deployment detail.",
+    },
+    {
+      icon: "shield-check",
+      title: "Security",
+      text: "Capability-based permissions, AES-GCM tokens, and zod validation on every input and output.",
+    },
+    {
+      icon: "eye",
+      title: "Observability",
+      text: "Every request flows through a single dispatch point — one place to log, trace and meter.",
+    },
+  ]}
+/>
+
+## Modularity
+
+An **operation** is the smallest unit of work — a plain module with up to three
+exports:
+
+```ts
+export const input  = z.object({ /* … */ })   // optional: validate the request
+export const output = z.object({ /* … */ })   // optional: validate the response
+export default async (io, data) => { /* … */ } // the handler; `io` is the Worker
+```
+
+Operations are grouped into **services** (a folder plus a `schema.ts` for its
+tables and an `index.ts` that names its operations). The whole registry is a
+spread, not a router:
+
+```ts
+// server/src/operations.ts
+import accounts from "./services/accounts"
+import catalogs from "./services/catalogs"
+import books from "./services/books"
+
+export default {
+  ...accounts,
+  ...catalogs,
+  ...books,
+}
+```
+
+Adding a feature = adding an operation module and listing it. No route tables,
+no controller classes, no wiring ceremony.
+
+## Scalability
+
+Sessions are **stateless**: identity travels as an AES-GCM-encrypted token
+inside every message, so any server instance holding the key can authenticate
+any request. There is no session table and no sticky-session requirement — the
+only shared state is the database and a small revocation blocklist. That makes
+horizontal scaling a deployment concern rather than an architectural one (see
+[Cloud Architecture](/docs/infrastructure/cloud-architecture/)).
+
+## Security
+
+Security is layered and — crucially — **uniform**, because every message passes
+the same checkpoints:
+
+1. **Envelope validation** — the raw body must parse as a `Message`.
+2. **Authentication** — the token is decrypted and checked against the
+   revocation blocklist.
+3. **Authorization** — a role→operations capability map, injected into the
+   agent by the host.
+4. **Input validation** — the operation's zod `input` schema.
+5. **Output validation** — the operation's zod `output` schema, so an operation
+   can never leak more than it declares.
+
+## Observability
+
+A single dispatch point (`Agent.process` → `Worker.processTask`) means there is
+exactly one place to intercept every operation call — the natural seam for
+structured logging, tracing and metrics. The worker already records an error
+trail per request (`worker.errors`), and the server scrubs stack traces before
+anything reaches the client. The proposed production wiring is described in
+[Monitoring & Logs](/docs/infrastructure/monitoring-logs/).

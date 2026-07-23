@@ -1,0 +1,130 @@
+---
+title: Business Logic
+description: >-
+  Business logic lives in composable operations dispatched through an
+  Agent → Worker pipeline. The worker is the per-request security sandbox —
+  permission checks, I/O validation, and a recursion guard, applied uniformly.
+badges: [COMMAND-BUS, COMPOSABLE, CAPABILITY-CHECKED]
+---
+
+## Agent → Worker Dispatch
+
+`Agent.process` authenticates the message, then hands execution to a fresh
+`Worker` bound to that one message and identity:
+
+```ts
+// shared/src/createAgent.ts (excerpt)
+async process(message: Message) {
+  // extract the identity token from the message's "from" field
+  const token = message.from.slice(28)
+  let identity: TokenIdentity | null = null
+
+  // identity is anonymous unless a decryptable token is present
+  if (token && token !== "anonymous" && this.encryptionKey) {
+    const decrypted = await decrypt(token, this.encryptionKey)
+    identity = JSON.parse(decrypted) as TokenIdentity
+
+    // honor the host-provided revocation check, if any
+    if (this.isTokenRevoked && (await this.isTokenRevoked(token))) {
+      identity = null
+    }
+  }
+
+  const worker = new Worker({ agent: this, message, identity })
+
+  return await worker.process()
+}
+```
+
+The agent is the *router and registry*; the **worker is the sandbox** that
+actually runs handlers and enforces the rules.
+
+## `do` vs `system`
+
+The worker exposes two ways to run an operation — and the difference is the
+system's whole security model:
+
+- **`do(op, data)`** — permission-checked against the injected capability map.
+  This is how the incoming message's operation runs.
+- **`system(op, data)`** — privileged, for operation-to-operation calls. The
+  composition itself is the trusted, audited path.
+
+```ts
+// shared/src/createWorker.ts (excerpt)
+async do(operation, data) {
+  // check if the identity is allowed to run the operation
+  if (!this.agent.can(this.identity, operation))
+    throw Error(`access denied: ${operation}`)
+
+  return this.processTask(operation, data, false)
+}
+
+async system(operation, data) {
+  // run the task as system (bypasses access checks)
+  return this.processTask(operation, data, true)
+}
+```
+
+Every task then passes through the same pipeline — existence check, recursion
+guard, input parse, handler, output parse:
+
+```ts
+// shared/src/createWorker.ts (excerpt)
+// prevent infinite loops, cannot call an operation recursively
+if (isSelfOrParent(this.stack, operation))
+  throw Error(`cannot call "${operation}" recursively`)
+
+this.stack.push([operation, data, asSystem])
+queueMicrotask(() => this.stack.pop())
+
+// validate input
+const input = task.input ? task.input.parse(data) : undefined
+// process operation
+const result = await task.default(this, input)
+// validate output
+const output = task.output ? task.output.parse(result) : undefined
+```
+
+## Composition: Register as Orchestration
+
+`accounts/register` is the showcase. It is callable by an **anonymous** user,
+yet it orchestrates three operations an anonymous user could never call
+directly — because the composition runs as `system`:
+
+```ts
+// server/src/services/accounts/register.ts (excerpt)
+// create the account record
+const account = await io.system("accounts/create", {
+  type: "MEMBER",
+  status: "ACTIVE",
+})
+
+// create the secret identity record
+await io.system("identities/create", {
+  type: "SECRET",
+  identifier: data.identifier,
+  token: data.secret,
+  accountId: account.id,
+})
+
+// issue an identity token by connecting
+const { token, role } = await io.system("accounts/connect", {
+  identifier: data.identifier,
+  secret: data.secret,
+})
+
+return { token, role }
+```
+
+Three mechanisms make this safe:
+
+1. **The permission boundary sits at the edge** — only the entry operation is
+   capability-checked; internal calls are trusted by design.
+2. **`io.isSystem`** lets operations relax *ownership* checks when invoked
+   internally — `books/add` requires catalog ownership from users, but skips
+   it during a system bulk import.
+3. **The recursion guard** rejects an operation that re-enters itself or its
+   parent, so a buggy composition fails loudly instead of looping forever.
+
+This is a tiny in-process **command bus**: capability check at the edge,
+trusted composition underneath, uniform validation everywhere.
