@@ -1,0 +1,100 @@
+---
+interface Props {
+  name: string;
+  size?: number;
+}
+
+const { name, size = 40 } = Astro.props;
+
+type Badge = { kind: "badge"; bg: string; fg: string; text: string; fs?: number };
+type Glyph = { kind: "glyph"; color: string; svg: string; fill?: boolean };
+
+// prettier-ignore
+const icons: Record<string, Badge | Glyph> = {
+  ts:      { kind: "badge", bg: "#3178c6", fg: "#ffffff", text: "TS" },
+  js:      { kind: "badge", bg: "#f7df1e", fg: "#111111", text: "JS" },
+  php:     { kind: "badge", bg: "#777bb3", fg: "#ffffff", text: "php", fs: 11 },
+  rust:    { kind: "badge", bg: "#1c1613", fg: "#f74c00", text: "R" },
+  solid:   { kind: "badge", bg: "#101c2c", fg: "#75b2df", text: "S" },
+  express: { kind: "badge", bg: "#161616", fg: "#e8e8e8", text: "ex", fs: 14 },
+  laravel: { kind: "badge", bg: "#1c1010", fg: "#ff2d20", text: "L" },
+  aws:     { kind: "badge", bg: "#191207", fg: "#ff9900", text: "aws", fs: 11 },
+  nginx:   { kind: "badge", bg: "#0a1710", fg: "#009639", text: "N" },
+  sentry:  { kind: "badge", bg: "#171224", fg: "#a48fdb", text: "S" },
+  jest:    { kind: "badge", bg: "#1d0d0f", fg: "#c21325", text: "J" },
+  cypress: { kind: "badge", bg: "#0d1815", fg: "#69d3a7", text: "Cy", fs: 13 },
+  expo:    { kind: "badge", bg: "#111418", fg: "#dbe3ea", text: "Ex", fs: 13 },
+  next:    { kind: "glyph", color: "#e8e8e8", svg: '<circle cx="12" cy="12" r="9.5"/><text x="12" y="16" text-anchor="middle" font-size="11" font-weight="700" font-family="inherit" fill="currentColor" stroke="none">N</text>' },
+  wordpress:{ kind: "glyph", color: "#4b9fca", svg: '<circle cx="12" cy="12" r="9.5"/><text x="12" y="15.5" text-anchor="middle" font-size="10.5" font-weight="700" font-family="inherit" fill="currentColor" stroke="none">W</text>' },
+  react:   { kind: "glyph", color: "#61dafb", svg: '<circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(120 12 12)"/>' },
+  electron:{ kind: "glyph", color: "#6cb6c4", svg: '<circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(120 12 12)"/>' },
+  vue:     { kind: "glyph", color: "#42b883", fill: true, svg: '<path d="M2 4h4.4L12 13.6 17.6 4H22L12 21z"/><path d="M7.5 4h3L12 6.7 13.5 4h3L12 11.8z" fill="#35495e"/>' },
+  tailwind:{ kind: "glyph", color: "#38bdf8", fill: true, svg: '<path d="M12 6c-2.9 0-4.7 1.4-5.5 4.3.9-1.4 2.1-1.9 3.5-1.6.8.2 1.4.8 2 1.5.9 1.1 2.1 2.3 4.5 2.3 2.9 0 4.7-1.4 5.5-4.3-.9 1.4-2.1 1.9-3.5 1.6-.8-.2-1.4-.8-2-1.5C15.6 7.2 14.4 6 12 6zM6.5 12.5c-2.9 0-4.7 1.4-5.5 4.3.9-1.4 2.1-1.9 3.5-1.6.8.2 1.4.8 2 1.5.9 1.1 2.1 2.3 4.5 2.3 2.9 0 4.7-1.4 5.5-4.3-.9 1.4-2.1 1.9-3.5 1.6-.8-.2-1.4-.8-2-1.5-1-1.1-2.1-2.3-4.5-2.3z"/>' },
+  node:    { kind: "glyph", color: "#83cd29", svg: '<path d="M12 2.5l8 4.6v9.3l-8 4.6-8-4.6V7.1z"/><text x="12" y="15.5" text-anchor="middle" font-size="8.5" font-weight="700" font-family="inherit" fill="currentColor" stroke="none">JS</text>' },
+  fastify: { kind: "glyph", color: "#e8e8e8", fill: true, svg: '<polygon points="13 2 3 14 10.5 14 9.5 22 21 9 13.5 9"/>' },
+  hono:    { kind: "glyph", color: "#ff5b11", fill: true, svg: '<path d="M12 2c1 3-1.5 4.8-2.8 6.6C7.8 10.5 7 12.2 7 14a5 5 0 0 0 10 0c0-1.6-.6-3-1.5-4.4-.4 1-.9 1.7-1.8 2.3.3-2.6-.4-6.6-1.7-9.9z"/>' },
+  graphql: { kind: "glyph", color: "#e10098", svg: '<path d="M12 3.6 19.3 7.8 19.3 16.2 12 20.4 4.7 16.2 4.7 7.8z"/><path d="M4.7 16.2 12 3.6 19.3 16.2z"/><circle cx="12" cy="3.6" r="1.6" fill="currentColor" stroke="none"/><circle cx="19.3" cy="7.8" r="1.6" fill="currentColor" stroke="none"/><circle cx="19.3" cy="16.2" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="20.4" r="1.6" fill="currentColor" stroke="none"/><circle cx="4.7" cy="16.2" r="1.6" fill="currentColor" stroke="none"/><circle cx="4.7" cy="7.8" r="1.6" fill="currentColor" stroke="none"/>' },
+  postgres:{ kind: "glyph", color: "#5d9fce", svg: '<ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M20 5.5v13c0 1.66-3.58 3-8 3s-8-1.34-8-3v-13"/><path d="M20 12c0 1.66-3.58 3-8 3s-8-1.34-8-3"/>' },
+  mysql:   { kind: "glyph", color: "#e48e00", svg: '<ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M20 5.5v13c0 1.66-3.58 3-8 3s-8-1.34-8-3v-13"/><path d="M20 12c0 1.66-3.58 3-8 3s-8-1.34-8-3"/>' },
+  nosql:   { kind: "glyph", color: "#4ade50", svg: '<ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M20 5.5v13c0 1.66-3.58 3-8 3s-8-1.34-8-3v-13"/><path d="M20 12c0 1.66-3.58 3-8 3s-8-1.34-8-3"/>' },
+  sql:     { kind: "glyph", color: "#b667e0", svg: '<ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M20 5.5v13c0 1.66-3.58 3-8 3s-8-1.34-8-3v-13"/><path d="M20 12c0 1.66-3.58 3-8 3s-8-1.34-8-3"/>' },
+  docker:  { kind: "glyph", color: "#2496ed", svg: '<path d="M3 13h18c-.5 4-3.5 7-9 7s-8.5-3-9-7z"/><rect x="5" y="9.5" width="3" height="3"/><rect x="9" y="9.5" width="3" height="3"/><rect x="13" y="9.5" width="3" height="3"/><rect x="9" y="5.5" width="3" height="3"/>' },
+  git:     { kind: "glyph", color: "#f05032", svg: '<circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="12" r="2.5"/><line x1="6" y1="8.5" x2="6" y2="15.5"/><path d="M8 7.5c4 0 7.5 1 7.5 2.2"/>' },
+  cicd:    { kind: "glyph", color: "#4ade50", svg: '<path d="M20 12a8 8 0 1 1-2.3-5.6"/><polyline points="17.8 2.6 17.8 6.6 13.8 6.6"/>' },
+  state:   { kind: "glyph", color: "#a48fdb", svg: '<circle cx="6" cy="6" r="2.6"/><circle cx="18" cy="6" r="2.6"/><circle cx="12" cy="18" r="2.6"/><line x1="8.6" y1="6" x2="15.4" y2="6"/><line x1="7.2" y1="8.2" x2="10.8" y2="15.8"/><line x1="16.8" y1="8.2" x2="13.2" y2="15.8"/>' },
+  websocket:{ kind: "glyph", color: "#4ade50", svg: '<path d="M3 8c2.5-3 6-4.5 9-4.5S18.5 5 21 8"/><path d="M6 11.5c1.8-2 4-3 6-3s4.2 1 6 3"/><circle cx="12" cy="16" r="2" fill="currentColor" stroke="none"/><line x1="12" y1="18" x2="12" y2="21"/>' },
+  media:   { kind: "glyph", color: "#e5a44d", svg: '<rect x="3" y="5" width="18" height="14" rx="2"/><polygon points="10.5 9.5 15.5 12 10.5 14.5" fill="currentColor" stroke="none"/><line x1="3" y1="8" x2="6" y2="8"/><line x1="3" y1="16" x2="6" y2="16"/><line x1="18" y1="8" x2="21" y2="8"/><line x1="18" y1="16" x2="21" y2="16"/>' },
+};
+
+const icon = icons[name] ?? icons.ts;
+const inner = Math.round(size * 0.6);
+---
+
+{
+  icon.kind === "badge" ? (
+    <span
+      class="tech-icon badge"
+      style={`--tile-bg:${icon.bg}; --tile-fg:${icon.fg}; width:${size}px; height:${size}px; font-size:${icon.fs ?? 15}px;`}
+    >
+      {icon.text}
+    </span>
+  ) : (
+    <span class="tech-icon glyph" style={`--tile-fg:${icon.color}; width:${size}px; height:${size}px;`}>
+      <svg
+        width={inner}
+        height={inner}
+        viewBox="0 0 24 24"
+        fill={icon.fill ? "currentColor" : "none"}
+        stroke={icon.fill ? "none" : "currentColor"}
+        stroke-width="1.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+        set:html={icon.svg}
+      />
+    </span>
+  )
+}
+
+<style>
+  .tech-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    flex-shrink: 0;
+  }
+
+  .badge {
+    background: var(--tile-bg);
+    color: var(--tile-fg);
+    font-weight: 800;
+    letter-spacing: 0.02em;
+  }
+
+  .glyph {
+    background: #0d1310;
+    border: 1px solid rgba(125, 141, 129, 0.18);
+    color: var(--tile-fg);
+  }
+</style>

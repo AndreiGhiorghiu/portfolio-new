@@ -1,5 +1,15 @@
 ---
 import Icon from "./Icon.astro";
+
+interface Props {
+  quote?: string;
+  author?: string;
+}
+
+const {
+  quote = "Simplicity is the ultimate sophistication.",
+  author = "Leonardo da Vinci",
+} = Astro.props;
 ---
 
 <figure class="quote-card">
@@ -13,8 +23,8 @@ import Icon from "./Icon.astro";
   </div>
   <div class="body dotted-bg">
     <span class="mark open" aria-hidden="true">“</span>
-    <blockquote>Simplicity is the ultimate sophistication.</blockquote>
-    <figcaption>— Leonardo da Vinci</figcaption>
+    <blockquote>{quote}</blockquote>
+    <figcaption>— {author}</figcaption>
     <span class="mark close" aria-hidden="true">”</span>
   </div>
 </figure>

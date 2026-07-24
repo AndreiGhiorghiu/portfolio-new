@@ -1,0 +1,118 @@
+---
+import TechIcon from "./TechIcon.astro";
+
+interface Props {
+  name: string;
+  description: string;
+  level: number;
+  icon: string;
+}
+
+const { name, description, level, icon } = Astro.props;
+---
+
+<article class="tech-card">
+  <TechIcon name={icon} />
+  <h3>{name}</h3>
+  <p>{description}</p>
+  <div class="meter">
+    <div
+      class="bar"
+      role="meter"
+      aria-valuenow={level}
+      aria-valuemin="0"
+      aria-valuemax="100"
+      aria-label={`${name} proficiency`}
+    >
+      <span style={`width:${level}%`}></span>
+    </div>
+    <span class="pct">{level}%</span>
+  </div>
+</article>
+
+<style>
+  .tech-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: var(--space-4) var(--space-3) var(--space-3);
+    border: var(--border-dim);
+    border-radius: var(--radius-lg);
+    background: var(--bg-panel);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .tech-card:hover {
+    border-color: var(--border-c);
+    box-shadow: var(--glow);
+  }
+
+  h3 {
+    font-size: var(--fs-base);
+    color: var(--text-bright);
+    font-weight: 700;
+  }
+
+  p {
+    flex: 1;
+    color: var(--text-dim);
+    font-size: var(--fs-xs);
+    line-height: 1.6;
+  }
+
+  .meter {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .bar {
+    flex: 1;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(74, 222, 80, 0.12);
+    overflow: hidden;
+  }
+
+  .bar span {
+    display: block;
+    height: 100%;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--green-dim), var(--green));
+    box-shadow: 0 0 6px rgba(74, 222, 80, 0.5);
+  }
+
+  .pct {
+    font-size: var(--fs-2xs);
+    color: var(--text-dim);
+  }
+
+  /* phone: full-width horizontal rows, icon left */
+  @media (max-width: 519px) {
+    .tech-card {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      grid-template-areas:
+        "icon name"
+        "icon desc"
+        "bar  bar";
+    }
+
+    .tech-card :global(.tech-icon) {
+      grid-area: icon;
+    }
+
+    h3 {
+      grid-area: name;
+      align-self: center;
+    }
+
+    p {
+      grid-area: desc;
+    }
+
+    .meter {
+      grid-area: bar;
+    }
+  }
+</style>
