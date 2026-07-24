@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>visits_ — devreviews.online</title>
+<style>
+  :root {
+    --bg: #050807; --bg-panel: #090d0a; --bg-active: rgba(74,222,80,.08);
+    --green: #4ade50; --green-dim: #2f9b38;
+    --text: #c9d6cc; --text-bright: #eef5ef; --text-dim: #7d8d81; --text-faint: #55655a;
+    --border: 1px solid rgba(74,222,80,.22); --border-dim: 1px solid rgba(74,222,80,.14);
+    --amber: #e5a44d;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 14px; line-height: 1.6; padding: 32px 24px 64px;
+    max-width: 1100px; margin: 0 auto;
+  }
+  h1 { color: var(--text-bright); font-size: 1.7rem; margin-bottom: 4px; }
+  h1 .cursor { color: var(--green); animation: blink 1.1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .sub { color: var(--text-dim); font-size: .8rem; margin-bottom: 28px; }
+  .label {
+    font-size: .7rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+  }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: 14px; margin-bottom: 28px; }
+  .tile { border: var(--border-dim); border-radius: 6px; background: var(--bg-panel); padding: 16px; }
+  .tile b { display: block; color: var(--green); font-size: 1.6rem; font-weight: 800; }
+  .tile span { color: var(--text-dim); font-size: .72rem; }
+  section { margin-bottom: 30px; }
+  section > .label { color: var(--green); display: block; margin-bottom: 12px; }
+  .panel { border: var(--border-dim); border-radius: 6px; background: var(--bg-panel); padding: 16px; overflow-x: auto; }
+  .bar-row { display: flex; align-items: center; gap: 12px; font-size: .75rem; padding: 2px 0; }
+  .bar-row .d { color: var(--text-dim); width: 84px; flex-shrink: 0; }
+  .bar-row .n { color: var(--text); width: 40px; text-align: right; flex-shrink: 0; }
+  .bar-row .bar { height: 10px; background: linear-gradient(90deg, var(--green-dim), var(--green)); border-radius: 2px; box-shadow: 0 0 6px rgba(74,222,80,.4); }
+  table { width: 100%; border-collapse: collapse; font-size: .78rem; }
+  th { text-align: left; color: var(--green); font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; border-bottom: var(--border); padding: 6px 10px; }
+  td { border-bottom: var(--border-dim); padding: 6px 10px; color: var(--text); }
+  td.dim, .dim { color: var(--text-dim); }
+  td.num { text-align: right; color: var(--green); }
+  .bot { color: var(--amber); font-size: .68rem; }
+  details { border: var(--border-dim); border-radius: 4px; margin-bottom: 8px; background: var(--bg-panel); }
+  summary { cursor: pointer; padding: 10px 14px; font-size: .8rem; color: var(--text); list-style: none; }
+  summary::-webkit-details-marker { display: none; }
+  summary:hover { background: var(--bg-active); }
+  summary b { color: var(--green); }
+  summary .meta { color: var(--text-faint); font-size: .7rem; float: right; }
+  details ol { margin: 0; padding: 4px 14px 12px 34px; color: var(--text-dim); font-size: .75rem; }
+  #error { color: var(--amber); }
+  .foot { color: var(--text-faint); font-size: .7rem; margin-top: 40px; }
+  a { color: var(--green); text-decoration: none; }
+</style>
+</head>
+<body>
+<h1>visits<span class="cursor">_</span></h1>
+<p class="sub">&gt; tail -f /var/log/visits/visits.json · devreviews.online</p>
+
+<div id="error"></div>
+<div class="tiles" id="tiles"></div>
+
+<section><span class="label">// Last 14 days</span><div class="panel" id="days"></div></section>
+<section><span class="label">// Top pages</span><div class="panel"><table id="pages"></table></div></section>
+<section><span class="label">// Visitors &amp; navigation</span><div id="visitors"></div></section>
+<section><span class="label">// Recent views</span><div class="panel"><table id="recent"></table></div></section>
+
+<p class="foot">humans only in charts — bot/tool hits (curl, crawlers) counted separately · <a href="data.json">raw json</a></p>
+
+<script>
+const BOTS = ["bot","crawl","spider","curl","wget","python-requests","headless"];
+const isBot = e => BOTS.some(m => (e.ua||"").toLowerCase().includes(m));
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const when = t => t.slice(0,16).replace("T"," ");
+
+fetch("data.json", {cache:"no-store"}).then(r => {
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return r.text();
+}).then(text => {
+  const all = text.split("\n").filter(Boolean).flatMap(line => {
+    try { return [JSON.parse(line)]; } catch { return []; }
+  }).filter(e => e.status === 200);
+  const humans = all.filter(e => !isBot(e));
+  const today = new Date().toISOString().slice(0,10);
+
+  // tiles
+  const ips = new Set(humans.map(e => e.ip));
+  document.getElementById("tiles").innerHTML = [
+    [humans.length, "page views"],
+    [ips.size, "unique visitors"],
+    [humans.filter(e => e.time.startsWith(today)).length, "views today"],
+    [all.length - humans.length, "bot / tool hits"],
+  ].map(([n, l]) => `<div class="tile"><b>${n}</b><span class="label">${l}</span></div>`).join("");
+
+  // last 14 days
+  const byDay = {};
+  humans.forEach(e => { const d = e.time.slice(0,10); byDay[d] = (byDay[d]||0)+1; });
+  const days = [...Array(14)].map((_, i) => {
+    const d = new Date(Date.now() - (13-i)*864e5).toISOString().slice(0,10);
+    return [d, byDay[d] || 0];
+  });
+  const max = Math.max(1, ...days.map(d => d[1]));
+  document.getElementById("days").innerHTML = days.map(([d, n]) =>
+    `<div class="bar-row"><span class="d">${d}</span><span class="n">${n}</span>
+     <span class="bar" style="width:${(n/max)*70}%"></span></div>`).join("");
+
+  // top pages
+  const byPage = {};
+  humans.forEach(e => { byPage[e.path] = (byPage[e.path]||0)+1; });
+  const top = Object.entries(byPage).sort((a,b) => b[1]-a[1]).slice(0,12);
+  document.getElementById("pages").innerHTML =
+    "<tr><th>views</th><th>page</th></tr>" +
+    top.map(([p, n]) => `<tr><td class="num">${n}</td><td>${esc(p)}</td></tr>`).join("");
+
+  // visitors with navigation path
+  const byIp = new Map();
+  humans.forEach(e => {
+    if (!byIp.has(e.ip)) byIp.set(e.ip, []);
+    byIp.get(e.ip).push(e);
+  });
+  document.getElementById("visitors").innerHTML = [...byIp.entries()].reverse().slice(0, 30)
+    .map(([ip, v]) => {
+      const pages = [...new Set(v.map(e => e.path))];
+      return `<details><summary><b>${esc(ip)}</b> · ${v.length} views
+        <span class="meta">${when(v[0].time)} → ${when(v[v.length-1].time)}</span></summary>
+        <ol>${pages.map(p => `<li>${esc(p)}</li>`).join("")}</ol></details>`;
+    }).join("") || '<p class="dim panel">no human visitors yet_</p>';
+
+  // recent
+  document.getElementById("recent").innerHTML =
+    "<tr><th>time (utc)</th><th>ip</th><th>page</th></tr>" +
+    all.slice(-25).reverse().map(e =>
+      `<tr><td class="dim">${when(e.time)}</td><td>${esc(e.ip)}</td>
+       <td>${esc(e.path)} ${isBot(e) ? '<span class="bot">[bot]</span>' : ""}</td></tr>`).join("");
+}).catch(err => {
+  document.getElementById("error").textContent = "> failed to load data.json — " + err.message;
+});
+</script>
+</body>
+</html>
