@@ -1,9 +1,447 @@
 ---
-import StubLayout from "../layouts/StubLayout.astro";
+import Base from "../layouts/Base.astro";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import SearchModal from "../components/SearchModal.astro";
+import MobileDrawer from "../components/MobileDrawer.astro";
+import Icon from "../components/Icon.astro";
+
+// Source of truth: the CV
+const contact = [
+  {
+    icon: "mail",
+    key: "Email",
+    value: "andreighiorghiudev@gmail.com",
+    href: "mailto:andreighiorghiudev@gmail.com",
+  },
+  {
+    icon: "phone",
+    key: "Phone",
+    value: "+40 726 505 826",
+    href: "tel:+40726505826",
+  },
+  {
+    icon: "pin",
+    key: "Location",
+    value: "Bucharest, Romania",
+    href: undefined,
+  },
+];
+
+const socials = [
+  { icon: "github", label: "GitHub", href: "https://github.com/andreighiorghiu" },
+  { icon: "linkedin", label: "LinkedIn", href: "https://www.linkedin.com/in/andreighiorghiu" },
+  { icon: "x-social", label: "X", href: "https://x.com/andreighiorghiu" },
+];
 ---
 
-<StubLayout
+<Base
   title="Contact"
-  command="ping andrei"
-  description="A contact page is in the works. Until then, reach out via GitHub or LinkedIn — the icons in the header link to both."
-/>
+  description="Get in touch with Andrei Ghiorghiu — open to new opportunities, interesting projects, or a chat about tech."
+>
+  <Header />
+
+  <div class="contact-shell">
+    <main class="contact-main">
+      <p class="page-label label">/ Contact</p>
+      <h1>
+        Let's Build<br />
+        <span class="accent cursor">Something Great</span>
+      </h1>
+      <p class="lead">
+        I'm always open to discussing new opportunities, interesting projects
+        or just having a chat about tech. Feel free to reach out!
+      </p>
+
+      <ul class="contact-rows" role="list">
+        {
+          contact.map((row) => (
+            <li>
+              <span class="row-icon">
+                <Icon name={row.icon} size={18} />
+              </span>
+              <div>
+                <p class="row-key">{row.key}</p>
+                {row.href ? (
+                  <a class="row-value" href={row.href}>
+                    {row.value}
+                  </a>
+                ) : (
+                  <p class="row-value">{row.value}</p>
+                )}
+              </div>
+            </li>
+          ))
+        }
+      </ul>
+
+      <h2 class="form-title label">Send Me a Message</h2>
+      <form id="contact-form" novalidate>
+        <div class="field-grid">
+          <label class="field">
+            <span class="field-label">Your Name</span>
+            <input type="text" name="name" placeholder="John Doe" autocomplete="name" />
+          </label>
+          <label class="field">
+            <span class="field-label">Your Email</span>
+            <input
+              type="email"
+              name="email"
+              placeholder="john@example.com"
+              autocomplete="email"
+            />
+          </label>
+        </div>
+        <label class="field">
+          <span class="field-label">Subject</span>
+          <input type="text" name="subject" placeholder="How can we work together?" />
+        </label>
+        <label class="field">
+          <span class="field-label">Message</span>
+          <textarea name="message" rows="6" placeholder="Tell me about your project..."
+          ></textarea>
+        </label>
+
+        <div class="form-actions">
+          <button type="submit" class="btn primary label">
+            Send Message <Icon name="arrow-right" size={14} />
+          </button>
+          <span class="reply-pill">
+            <span class="pulse" aria-hidden="true"></span>
+            Usually replies within 24h
+          </span>
+        </div>
+      </form>
+
+      <h2 class="form-title label">Find Me On</h2>
+      <ul class="socials" role="list">
+        {
+          socials.map((social) => (
+            <li>
+              <a href={social.href} aria-label={social.label} target="_blank" rel="noopener">
+                <Icon name={social.icon} size={20} />
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </main>
+
+    <aside class="artwork" aria-hidden="true">
+      <img
+        src="/images/contact-art.jpg"
+        alt=""
+        width="1100"
+        height="880"
+        loading="eager"
+      />
+    </aside>
+  </div>
+
+  <Footer />
+  <SearchModal />
+  <MobileDrawer />
+</Base>
+
+<style>
+  .contact-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    gap: var(--space-5);
+    align-items: start;
+    max-width: 1560px;
+    margin: 0 auto;
+    padding: var(--space-5) var(--space-4);
+    min-height: calc(100vh - var(--header-h));
+  }
+
+  .page-label {
+    color: var(--green);
+    margin-bottom: var(--space-3);
+  }
+
+  h1 {
+    font-size: 2.6rem;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    margin-bottom: var(--space-4);
+  }
+
+  .accent {
+    color: var(--green);
+    text-shadow: 0 0 18px rgba(74, 222, 80, 0.35);
+  }
+
+  .lead {
+    color: var(--text-dim);
+    font-size: var(--fs-md);
+    line-height: 1.85;
+    max-width: 52ch;
+    margin-bottom: var(--space-4);
+  }
+
+  /* ── contact rows ──────────────────────────────────── */
+  .contact-rows {
+    list-style: none;
+    margin: 0 0 var(--space-5);
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+
+  .contact-rows li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .contact-rows li + li {
+    border-left: var(--border-dim);
+    padding-left: var(--space-3);
+  }
+
+  .row-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+    color: var(--green);
+    border: var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-active);
+  }
+
+  .row-key {
+    color: var(--text);
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    margin: 0;
+  }
+
+  .row-value {
+    display: block;
+    color: var(--green);
+    font-size: var(--fs-xs);
+    margin: 2px 0 0;
+    overflow-wrap: anywhere;
+  }
+
+  a.row-value:hover {
+    color: var(--green-bright);
+  }
+
+  /* ── form ──────────────────────────────────────────── */
+  .form-title {
+    color: var(--green);
+    margin-bottom: var(--space-3);
+  }
+
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-bottom: var(--space-5);
+  }
+
+  .field-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border: var(--border-dim);
+    border-radius: var(--radius);
+    background: var(--bg-panel);
+    padding: 10px 14px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .field:focus-within {
+    border-color: var(--green);
+    box-shadow: var(--glow);
+  }
+
+  .field-label {
+    color: var(--text);
+    font-size: var(--fs-xs);
+    font-weight: 600;
+  }
+
+  input,
+  textarea {
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text-bright);
+    font-family: var(--font);
+    font-size: var(--fs-sm);
+    padding: 2px 0;
+    resize: vertical;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--text-faint);
+  }
+
+  .form-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 24px;
+    border-radius: var(--radius);
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .btn.primary {
+    background: var(--green);
+    color: #04220a;
+    box-shadow: var(--glow-strong);
+  }
+
+  .btn.primary:hover {
+    background: var(--green-bright);
+  }
+
+  .reply-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    border: var(--border-dim);
+    border-radius: var(--radius);
+    background: var(--bg-panel);
+    padding: 12px 18px;
+    color: var(--text);
+    font-size: var(--fs-sm);
+  }
+
+  .pulse {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px rgba(74, 222, 80, 0.7);
+    animation: blink 2s ease infinite;
+  }
+
+  /* ── socials ───────────────────────────────────────── */
+  .socials {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    gap: var(--space-3);
+  }
+
+  .socials a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    color: var(--text);
+    border: var(--border-dim);
+    border-radius: var(--radius);
+    background: var(--bg-panel);
+    transition: color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .socials a:hover {
+    color: var(--green);
+    border-color: var(--border-c);
+    box-shadow: var(--glow);
+  }
+
+  /* ── artwork ───────────────────────────────────────── */
+  .artwork {
+    position: sticky;
+    top: calc(var(--header-h) + var(--space-4));
+  }
+
+  .artwork img {
+    width: 100%;
+    height: auto;
+    clip-path: polygon(
+      28px 0,
+      calc(100% - 28px) 0,
+      100% 28px,
+      100% calc(100% - 28px),
+      calc(100% - 28px) 100%,
+      28px 100%,
+      0 calc(100% - 28px),
+      0 28px
+    );
+  }
+
+  /* ── responsive ────────────────────────────────────── */
+  @media (max-width: 1023px) {
+    .contact-shell {
+      grid-template-columns: minmax(0, 1fr);
+      padding: var(--space-4) var(--space-3);
+    }
+
+    .artwork {
+      position: static;
+      order: -1;
+      max-width: 560px;
+    }
+
+    h1 {
+      font-size: 2rem;
+    }
+  }
+
+  @media (max-width: 599px) {
+    .field-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .contact-rows {
+      flex-direction: column;
+      gap: var(--space-3);
+    }
+
+    .contact-rows li + li {
+      border-left: none;
+      padding-left: 0;
+    }
+  }
+</style>
+
+<script>
+  // Static site: submitting opens a prefilled email in the visitor's mail app
+  const form = document.getElementById("contact-form") as HTMLFormElement | null;
+
+  form?.addEventListener("submit", (event) => {
+    event.preventDefault();
+
+    const data = new FormData(form);
+    const name = String(data.get("name") ?? "").trim();
+    const email = String(data.get("email") ?? "").trim();
+    const subject = String(data.get("subject") ?? "").trim() || "Hello from your portfolio";
+    const message = String(data.get("message") ?? "").trim();
+
+    const body = [message, "", "—", name, email].filter(Boolean).join("\n");
+
+    const url = `mailto:andreighiorghiudev@gmail.com?subject=${encodeURIComponent(
+      subject,
+    )}&body=${encodeURIComponent(body)}`;
+
+    window.location.href = url;
+  });
+</script>
