@@ -91,6 +91,13 @@ pre {
   outline-offset: 2px;
 }
 
+/* clear the fixed bottom tab bar on phones */
+@media (max-width: 767px) {
+  body {
+    padding-bottom: calc(56px + env(safe-area-inset-bottom));
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
