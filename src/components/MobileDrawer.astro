@@ -1,14 +1,19 @@
 ---
 import Icon from "./Icon.astro";
 import SidebarNav from "./SidebarNav.astro";
-import SearchBox from "./SearchBox.astro";
-import StatusWidget from "./StatusWidget.astro";
+
+interface TocItem {
+  title: string;
+  href: string;
+}
 
 interface Props {
   currentSlug?: string;
+  // per-page section links; when absent the docs sidebar is shown instead
+  items?: TocItem[];
 }
 
-const { currentSlug } = Astro.props;
+const { currentSlug, items } = Astro.props;
 ---
 
 <div class="drawer-root" id="mobile-drawer" hidden>
@@ -20,34 +25,25 @@ const { currentSlug } = Astro.props;
         <Icon name="x" size={18} />
       </button>
     </div>
-    <div class="drawer-search">
-      <SearchBox />
-    </div>
-    <nav class="drawer-pages" aria-label="Pages">
-      <p class="label pages-title">Pages</p>
-      {
-        [
-          { label: "Architecture", icon: "layout", href: "/docs/overview/high-level-overview/", match: "/docs" },
-          { label: "Projects", icon: "code-box", href: "/projects/", match: "/projects" },
-          { label: "Stack", icon: "server", href: "/stack/", match: "/stack" },
-          { label: "About", icon: "user", href: "/about/", match: "/about" },
-          { label: "Contact", icon: "mail", href: "/contact/", match: "/contact" },
-        ].map((link) => (
-          <a
-            href={link.href}
-            class:list={["page-link", { active: Astro.url.pathname.startsWith(link.match) }]}
-          >
-            <Icon name={link.icon} size={15} />
-            {link.label}
-          </a>
-        ))
-      }
-    </nav>
     <div class="drawer-nav">
-      <SidebarNav currentSlug={currentSlug} />
-    </div>
-    <div class="drawer-status">
-      <StatusWidget />
+      {
+        items ? (
+          <nav aria-label="On this page">
+            <p class="label toc-title">On This Page</p>
+            <ul class="toc-list">
+              {items.map((item) => (
+                <li>
+                  <a href={item.href} class="toc-link">
+                    {item.title}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        ) : (
+          <SidebarNav currentSlug={currentSlug} />
+        )
+      }
     </div>
   </aside>
 </div>
@@ -105,47 +101,47 @@ const { currentSlug } = Astro.props;
     color: var(--green);
   }
 
-  .drawer-pages {
+  .drawer-nav {
+    flex: 1;
+  }
+
+  .toc-title {
+    color: var(--text);
+    padding: 8px 10px;
+  }
+
+  .toc-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
     display: flex;
     flex-direction: column;
     gap: 2px;
-    border-bottom: var(--border-dim);
-    padding-bottom: var(--space-3);
   }
 
-  .pages-title {
-    color: var(--text-faint);
-    margin-bottom: 6px;
-  }
-
-  .page-link {
-    display: flex;
-    align-items: center;
-    gap: 10px;
+  .toc-link {
+    display: block;
     padding: 8px 10px;
     font-size: var(--fs-sm);
-    color: var(--text);
+    color: var(--text-dim);
     border-left: 2px solid transparent;
     border-radius: 0 var(--radius) var(--radius) 0;
   }
 
-  .page-link:hover {
+  .toc-link:hover {
+    color: var(--text);
     background: var(--bg-hover);
-  }
-
-  .page-link.active {
-    color: var(--green);
-    background: var(--bg-active);
-    border-left-color: var(--green);
-  }
-
-  .drawer-nav {
-    flex: 1;
   }
 </style>
 
 <script>
   const drawer = document.getElementById("mobile-drawer");
+
+  function close() {
+    if (!drawer) return;
+    drawer.hidden = true;
+    document.body.style.overflow = "";
+  }
 
   document.addEventListener("click", (event) => {
     const target = event.target as HTMLElement;
@@ -153,16 +149,12 @@ const { currentSlug } = Astro.props;
       drawer.hidden = false;
       document.body.style.overflow = "hidden";
     }
-    if (target.closest("[data-drawer-close]") && drawer) {
-      drawer.hidden = true;
-      document.body.style.overflow = "";
-    }
+    if (target.closest("[data-drawer-close]")) close();
+    // tapping any drawer link (incl. same-page anchors) should dismiss it
+    if (target.closest("#mobile-drawer a")) close();
   });
 
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && drawer && !drawer.hidden) {
-      drawer.hidden = true;
-      document.body.style.overflow = "";
-    }
+    if (event.key === "Escape" && drawer && !drawer.hidden) close();
   });
 </script>

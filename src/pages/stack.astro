@@ -205,7 +205,9 @@ const donutStops = mostUsed
 
   <Footer />
   <SearchModal />
-  <MobileDrawer />
+  <MobileDrawer
+    items={tocItems.map((item) => ({ title: item.title, href: `#${item.id}` }))}
+  />
 </Base>
 
 <style>
