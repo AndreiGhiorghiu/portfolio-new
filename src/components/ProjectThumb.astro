@@ -1,0 +1,175 @@
+---
+interface Props {
+  variant: "diagram" | "network" | "menu" | "scene" | "kit";
+}
+
+const { variant } = Astro.props;
+
+// Stylized in-card graphics, one per project type. All stroke #4ade50-family.
+const art: Record<string, string> = {
+  // architecture diagram — boxes and arrows
+  diagram: `
+    <rect x="24" y="60" width="70" height="44" rx="3"/>
+    <text x="59" y="86" text-anchor="middle" class="t">CLIENT</text>
+    <line x1="94" y1="82" x2="128" y2="82" marker-end="url(#arr)"/>
+    <rect x="132" y="60" width="70" height="44" rx="3"/>
+    <text x="167" y="86" text-anchor="middle" class="t">/io</text>
+    <line x1="202" y1="82" x2="236" y2="82" marker-end="url(#arr)"/>
+    <rect x="240" y="46" width="86" height="72" rx="3" class="hl"/>
+    <text x="283" y="74" text-anchor="middle" class="t">AGENT</text>
+    <text x="283" y="94" text-anchor="middle" class="t dim2">WORKERS</text>
+    <line x1="326" y1="82" x2="352" y2="82" marker-end="url(#arr)"/>
+    <rect x="356" y="60" width="24" height="44" rx="3"/>
+    <ellipse cx="368" cy="66" rx="10" ry="4"/>
+    <line x1="283" y1="118" x2="283" y2="136" marker-end="url(#arr)"/>
+    <rect x="228" y="140" width="110" height="26" rx="3"/>
+    <text x="283" y="157" text-anchor="middle" class="t dim2">INFRASTRUCTURE</text>`,
+  // neuron network brain
+  network: `
+    <g class="dim">
+      <line x1="90" y1="60" x2="150" y2="40"/><line x1="90" y1="60" x2="140" y2="95"/>
+      <line x1="150" y1="40" x2="220" y2="52"/><line x1="140" y1="95" x2="220" y2="52"/>
+      <line x1="140" y1="95" x2="196" y2="128"/><line x1="220" y1="52" x2="196" y2="128"/>
+      <line x1="220" y1="52" x2="290" y2="42"/><line x1="290" y1="42" x2="320" y2="86"/>
+      <line x1="196" y1="128" x2="272" y2="118"/><line x1="272" y1="118" x2="320" y2="86"/>
+      <line x1="290" y1="42" x2="272" y2="118"/><line x1="90" y1="60" x2="64" y2="108"/>
+      <line x1="64" y1="108" x2="140" y2="95"/><line x1="196" y1="128" x2="170" y2="150"/>
+    </g>
+    <circle cx="90" cy="60" r="4" class="node"/><circle cx="150" cy="40" r="3" class="node"/>
+    <circle cx="220" cy="52" r="5" class="node hl2"/><circle cx="140" cy="95" r="4" class="node"/>
+    <circle cx="196" cy="128" r="4" class="node"/><circle cx="290" cy="42" r="3" class="node"/>
+    <circle cx="320" cy="86" r="4" class="node hl2"/><circle cx="272" cy="118" r="3" class="node"/>
+    <circle cx="64" cy="108" r="3" class="node"/><circle cx="170" cy="150" r="2.5" class="node"/>
+    <text x="26" y="34" class="t dim2">// neural.hero</text>`,
+  // café menu UI
+  menu: `
+    <rect x="120" y="18" width="160" height="150" rx="8"/>
+    <line x1="120" y1="44" x2="280" y2="44"/>
+    <text x="134" y="36" class="t">ARISTO CAFÉ_</text>
+    <g class="dim">
+      <rect x="134" y="56" width="60" height="20" rx="2"/>
+      <rect x="206" y="56" width="60" height="20" rx="2"/>
+    </g>
+    <text x="139" y="70" class="t dim2">ESPRESSO</text>
+    <text x="213" y="70" class="t dim2">GIN&amp;TONIC</text>
+    <line x1="134" y1="94" x2="240" y2="94"/><text x="266" y="97" class="t" text-anchor="end"> </text>
+    <text x="134" y="110" class="t dim2">Cappuccino</text><text x="266" y="110" class="t" text-anchor="end">14</text>
+    <text x="134" y="128" class="t dim2">Flat White</text><text x="266" y="128" class="t" text-anchor="end">16</text>
+    <text x="134" y="146" class="t dim2">Cold Brew</text><text x="266" y="146" class="t" text-anchor="end">18</text>
+    <circle cx="304" cy="40" r="14" class="hl"/>
+    <text x="304" y="44" text-anchor="middle" class="t">%</text>`,
+  // low-poly 3D scene
+  scene: `
+    <g class="dim">
+      <line x1="20" y1="150" x2="380" y2="150"/>
+      <line x1="60" y1="150" x2="110" y2="120"/><line x1="160" y1="150" x2="110" y2="120"/>
+      <line x1="200" y1="150" x2="260" y2="105"/><line x1="320" y1="150" x2="260" y2="105"/>
+      <line x1="20" y1="164" x2="380" y2="164"/>
+      <line x1="60" y1="164" x2="66" y2="178"/><line x1="140" y1="164" x2="150" y2="178"/>
+      <line x1="240" y1="164" x2="250" y2="178"/><line x1="320" y1="164" x2="332" y2="178"/>
+    </g>
+    <path d="M150 150v-36h44v36" fill="none"/>
+    <path d="M144 114l28-22 28 22" fill="none" class="hl"/>
+    <rect x="164" y="132" width="14" height="18"/>
+    <line x1="240" y1="150" x2="240" y2="128"/>
+    <circle cx="240" cy="118" r="11" class="hl"/>
+    <line x1="96" y1="150" x2="96" y2="132"/>
+    <circle cx="96" cy="122" r="12"/>
+    <circle cx="330" cy="46" r="14" class="hl"/>
+    <g class="dim"><line x1="330" y1="24" x2="330" y2="16"/><line x1="352" y1="46" x2="360" y2="46"/><line x1="346" y1="30" x2="352" y2="24"/></g>
+    <text x="26" y="34" class="t dim2">// scroll.story</text>`,
+  // UI kit / design components
+  kit: `
+    <rect x="28" y="32" width="120" height="34" rx="3" class="hl"/>
+    <text x="88" y="53" text-anchor="middle" class="t">CERE OFERTĂ</text>
+    <rect x="162" y="32" width="120" height="34" rx="3"/>
+    <text x="222" y="53" text-anchor="middle" class="t dim2">DESPRE NOI</text>
+    <rect x="28" y="82" width="164" height="84" rx="3"/>
+    <circle cx="52" cy="106" r="10"/>
+    <text x="70" y="110" class="t">RCA / CASCO</text>
+    <g class="dim">
+      <line x1="44" y1="128" x2="176" y2="128"/>
+      <line x1="44" y1="140" x2="150" y2="140"/>
+      <line x1="44" y1="152" x2="162" y2="152"/>
+    </g>
+    <rect x="208" y="82" width="164" height="84" rx="3"/>
+    <circle cx="232" cy="106" r="10"/>
+    <text x="250" y="110" class="t">TRAVEL</text>
+    <g class="dim">
+      <line x1="224" y1="128" x2="356" y2="128"/>
+      <line x1="224" y1="140" x2="330" y2="140"/>
+      <line x1="224" y1="152" x2="342" y2="152"/>
+    </g>
+    <rect x="296" y="24" width="76" height="20" rx="10" class="hl"/>
+    <text x="334" y="38" text-anchor="middle" class="t">FAQ</text>`,
+};
+---
+
+<div class="thumb dotted-bg" aria-hidden="true">
+  <svg viewBox="0 0 400 186" preserveAspectRatio="xMidYMid meet">
+    <defs>
+      <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+        <path d="M0 0L10 5L0 10z" fill="rgba(74,222,80,0.7)"></path>
+      </marker>
+    </defs>
+    <g set:html={art[variant]} />
+  </svg>
+</div>
+
+<style>
+  .thumb {
+    border-bottom: var(--border-dim);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    background-color: rgba(5, 8, 7, 0.6);
+    overflow: hidden;
+  }
+
+  svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  svg :global(rect),
+  svg :global(circle),
+  svg :global(ellipse),
+  svg :global(line),
+  svg :global(path) {
+    fill: none;
+    stroke: rgba(74, 222, 80, 0.55);
+    stroke-width: 1.2;
+  }
+
+  svg :global(.dim line),
+  svg :global(.dim rect),
+  svg :global(.dim circle) {
+    stroke: rgba(74, 222, 80, 0.28);
+  }
+
+  svg :global(.hl) {
+    stroke: rgba(74, 222, 80, 0.9);
+    filter: drop-shadow(0 0 3px rgba(74, 222, 80, 0.5));
+  }
+
+  svg :global(.node) {
+    fill: rgba(74, 222, 80, 0.8);
+    stroke: none;
+  }
+
+  svg :global(.node.hl2) {
+    fill: #62f068;
+    filter: drop-shadow(0 0 4px rgba(74, 222, 80, 0.8));
+  }
+
+  svg :global(text) {
+    fill: rgba(201, 214, 204, 0.9);
+    stroke: none;
+    font-family: var(--font);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+  }
+
+  svg :global(text.dim2) {
+    fill: rgba(125, 141, 129, 0.9);
+  }
+</style>
