@@ -4,7 +4,7 @@ import mdx from "@astrojs/mdx";
 import terminalTheme from "./src/lib/shiki-terminal.mjs";
 
 export default defineConfig({
-  site: "https://devreviews.online",
+  site: "https://andrei-ghiorghiu.dev",
   integrations: [mdx()],
   markdown: {
     shikiConfig: {
