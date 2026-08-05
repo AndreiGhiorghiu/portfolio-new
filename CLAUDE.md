@@ -8,12 +8,6 @@ Terminal-green (hacker-theme) portfolio site for Andrei Ghiorghiu, built with As
 
 ## Commands
 
-```bash
-npm run dev        # dev server at http://localhost:4321
-npm run build      # static build to dist/ — also the "does everything still compile" check
-npm run preview    # serve dist/
-```
-
 There are no tests and no linter. `npm run build` is the verification gate — run it after changes. A `.claude/launch.json` config named `portfolio-dev` exists for browser preview.
 
 ## Architecture
@@ -25,7 +19,7 @@ There are no tests and no linter. `npm run build` is the verification gate — r
 
 **Docs pipeline:** `src/content.config.ts` defines the `docs` collection (frontmatter: `title`, `description`, `badges?`, `status?`). `src/pages/docs/[...slug].astro` renders every entry through `src/layouts/DocsLayout.astro` (3/2/1-column responsive shell: sidebar / article / TOC+tech-stack rail). Frontmatter `status: proposed` renders the amber "Proposed adaptation" banner — used for Infrastructure pages describing designs that are not actually deployed. MDX pages import interactive components directly (`CodeTabs`, `ResponsePanel`, `ArchDiagram`, `PrincipleCards`).
 
-**Standalone pages** (`stack.astro`, `about.astro`, `projects.astro`, `contact.astro`) each compose their own shell from `Base.astro` + `Header`/`Footer`/`SearchModal`/`MobileDrawer` and carry their own scoped styles and small vanilla `<script>` islands (scroll-spy, filters, tabs). There is no client framework — interactivity is plain DOM scripts.
+**Standalone pages** carry their own scoped styles and small vanilla `<script>` islands. There is no client framework — interactivity is plain DOM scripts; keep it that way.
 
 **Design system:** all visual values live in `src/styles/tokens.css` custom properties; `utilities.css` has the shared `.label`, `.panel`, `.dotted-bg`, `.cursor` (blinking `_`) helpers; `code.css` styles all Shiki output (line numbers via CSS counters). Syntax highlighting uses the custom theme in `src/lib/shiki-terminal.mjs`, wired both into `astro.config.mjs` (markdown fences) and passed explicitly to `<Code>` inside `CodeTabs`/`ResponsePanel`.
 

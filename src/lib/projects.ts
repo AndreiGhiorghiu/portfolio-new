@@ -11,7 +11,7 @@ export interface Project {
   categories: string[]; // filter keys
   description: string;
   tags: ProjectTag[];
-  thumb: "diagram" | "network" | "menu" | "scene" | "kit";
+  thumb: "diagram" | "network" | "menu" | "scene" | "kit" | "quest";
   caseStudy?: string;
   code?: string;
   note?: string; // shown when there are no public links
@@ -42,6 +42,22 @@ export const projects: Project[] = [
     ],
     thumb: "diagram",
     caseStudy: "/docs/overview/high-level-overview/",
+  },
+  {
+    id: "family-quest",
+    title: "Family Quest",
+    year: "2026",
+    categories: ["full-stack", "backend"],
+    description:
+      "Family chores-and-rewards app with two faces — a playful child mode and a parent dashboard — sharing one state through pure reducers, an /io message hub and offline-first optimistic sync.",
+    tags: [
+      { icon: "react", label: "React 18" },
+      { icon: "ts", label: "TypeScript" },
+      { icon: "hono", label: "Hono" },
+      { icon: "sql", label: "SQLite" },
+    ],
+    thumb: "quest",
+    note: "Personal prototype",
   },
   {
     id: "dan-cruceanu",
