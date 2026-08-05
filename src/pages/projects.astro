@@ -85,6 +85,11 @@ const updated = new Date()
                 ))}
               </ul>
               <div class="card-links">
+                {project.live && (
+                  <a href={project.live} class="card-link label" target="_blank" rel="noopener">
+                    View Live <Icon name="arrow-right" size={13} />
+                  </a>
+                )}
                 {project.caseStudy && (
                   <a href={project.caseStudy} class="card-link label">
                     View Case Study <Icon name="arrow-right" size={13} />
@@ -95,7 +100,7 @@ const updated = new Date()
                     View Code <Icon name="arrow-right" size={13} />
                   </a>
                 )}
-                {!project.caseStudy && !project.code && project.note && (
+                {!project.live && !project.caseStudy && !project.code && project.note && (
                   <span class="private label">// {project.note}</span>
                 )}
               </div>

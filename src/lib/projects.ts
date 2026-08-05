@@ -11,7 +11,8 @@ export interface Project {
   categories: string[]; // filter keys
   description: string;
   tags: ProjectTag[];
-  thumb: "diagram" | "network" | "menu" | "scene" | "kit" | "quest";
+  thumb: "diagram" | "network" | "menu" | "scene" | "kit" | "quest" | "blocks";
+  live?: string;
   caseStudy?: string;
   code?: string;
   note?: string; // shown when there are no public links
@@ -41,6 +42,7 @@ export const projects: Project[] = [
       { icon: "sql", label: "SQLite" },
     ],
     thumb: "diagram",
+    live: "https://agent-marketplace.andrei-ghiorghiu.dev",
     caseStudy: "/docs/overview/high-level-overview/",
   },
   {
@@ -57,7 +59,25 @@ export const projects: Project[] = [
       { icon: "sql", label: "SQLite" },
     ],
     thumb: "quest",
+    live: "https://family-quest.andrei-ghiorghiu.dev",
     note: "Personal prototype",
+  },
+  {
+    id: "codequest",
+    title: "Tiny Coder",
+    year: "2026",
+    categories: ["frontend", "full-stack"],
+    description:
+      "A bilingual browser game teaching kids aged 3+ the first ideas of programming — block programs guide a tiny robot to its star across three worlds. Offline-first, original SVG art, Rust /io backend.",
+    tags: [
+      { icon: "react", label: "React" },
+      { icon: "ts", label: "TypeScript" },
+      { icon: "rust", label: "Rust" },
+      { icon: "sql", label: "SQLite" },
+    ],
+    thumb: "blocks",
+    live: "https://codequest.andrei-ghiorghiu.dev",
+    note: "Personal project",
   },
   {
     id: "dan-cruceanu",
@@ -73,6 +93,7 @@ export const projects: Project[] = [
       { icon: "notion", label: "Notion API" },
     ],
     thumb: "network",
+    live: "https://dan-cruceanu.andrei-ghiorghiu.dev",
     note: "Client work",
   },
   {
@@ -105,6 +126,7 @@ export const projects: Project[] = [
       { icon: "ts", label: "TypeScript" },
     ],
     thumb: "scene",
+    live: "https://destine-3d.andrei-ghiorghiu.dev",
     note: "Client work",
   },
   {
@@ -120,6 +142,7 @@ export const projects: Project[] = [
       { icon: "vite", label: "Vite" },
     ],
     thumb: "kit",
+    live: "https://destine-broker.andrei-ghiorghiu.dev",
     note: "Client work",
   },
 ];

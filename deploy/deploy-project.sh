@@ -10,6 +10,8 @@
 #   --start "cmd"        systemd ExecStart in node mode (default: "npx tsx server/main.ts")
 #   --env KEY=VALUE      systemd Environment= entry (repeatable)
 #   --spa                SPA fallback: unknown paths serve /index.html
+#   --pm pnpm            project uses pnpm workspaces (syncs pnpm files, installs with pnpm)
+#   --install "cmd"      server-side install command override
 #
 # Example (family-quest):
 #   ./deploy-project.sh family-quest ~/Projects/Personal/family-quest \
@@ -32,16 +34,19 @@ LOCAL_DIR="${LOCAL_DIR%/}"
 shift 2
 
 BUILD="npm run build"; STATIC_DIR="dist"; PORT=""; START="npx tsx server/main.ts"; SPA=0
+PM="npm"; INSTALL=""
 PROXIES=(); ENVS=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --build)  BUILD="$2"; shift 2 ;;
-    --static) STATIC_DIR="$2"; shift 2 ;;
-    --port)   PORT="$2"; shift 2 ;;
-    --proxy)  PROXIES+=("$2"); shift 2 ;;
-    --start)  START="$2"; shift 2 ;;
-    --env)    ENVS+=("$2"); shift 2 ;;
-    --spa)    SPA=1; shift ;;
+    --build)   BUILD="$2"; shift 2 ;;
+    --static)  STATIC_DIR="$2"; shift 2 ;;
+    --port)    PORT="$2"; shift 2 ;;
+    --proxy)   PROXIES+=("$2"); shift 2 ;;
+    --start)   START="$2"; shift 2 ;;
+    --env)     ENVS+=("$2"); shift 2 ;;
+    --spa)     SPA=1; shift ;;
+    --pm)      PM="$2"; shift 2 ;;
+    --install) INSTALL="$2"; shift 2 ;;
     *) echo "unknown option: $1"; exit 1 ;;
   esac
 done
@@ -59,6 +64,9 @@ if [[ -n "$PORT" ]]; then
     echo "installing Node 22...";
     curl -fsSL https://deb.nodesource.com/setup_22.x | bash - >/dev/null 2>&1;
     apt-get install -y -qq nodejs; }; node --version'
+  if [[ "$PM" == "pnpm" ]]; then
+    ssh "$SERVER" 'command -v pnpm >/dev/null 2>&1 || npm install -g pnpm@10 --loglevel=error; pnpm --version'
+  fi
 fi
 
 # ── 2. local build ───────────────────────────────────────────────────────────
@@ -69,14 +77,16 @@ fi
 [[ -d "$LOCAL_DIR/$STATIC_DIR" ]] || { echo "web root $LOCAL_DIR/$STATIC_DIR missing"; exit 1; }
 
 # ── 3. sync files ────────────────────────────────────────────────────────────
-ssh "$SERVER" "mkdir -p '$BASE/app' '$BASE/data'"
+ssh "$SERVER" "mkdir -p '$BASE/app/$STATIC_DIR' '$BASE/data'"
 
 if [[ -n "$PORT" ]]; then
   echo "==> sync source"
+  PM_EXCLUDES=(--exclude pnpm-lock.yaml --exclude pnpm-workspace.yaml)
+  [[ "$PM" == "pnpm" ]] && PM_EXCLUDES=(--exclude package-lock.json)
   rsync -az --delete \
     --exclude node_modules --exclude .git --exclude "$STATIC_DIR" --exclude data \
     --exclude '*.db' --exclude '*.db-wal' --exclude '*.db-shm' --exclude '*.db-journal' \
-    --exclude pnpm-lock.yaml --exclude pnpm-workspace.yaml --exclude .env \
+    "${PM_EXCLUDES[@]}" --exclude .env \
     "$LOCAL_DIR/" "$SERVER:$BASE/app/"
 fi
 
@@ -106,10 +116,17 @@ RestartSec=3
 WantedBy=multi-user.target
 UNIT
 
+  if [[ -z "$INSTALL" ]]; then
+    if [[ "$PM" == "pnpm" ]]; then
+      INSTALL="pnpm install --frozen-lockfile --prod=false --reporter=silent"
+    else
+      INSTALL='if [ -d node_modules ]; then npm install --no-audit --no-fund --loglevel=error; else npm ci --no-audit --no-fund --loglevel=error; fi'
+    fi
+  fi
+
   scp -q "$TMP/$SERVICE.service" "$SERVER:/etc/systemd/system/$SERVICE.service"
   ssh "$SERVER" "cd '$BASE/app' &&
-    if [ -d node_modules ]; then npm install --no-audit --no-fund --loglevel=error; \
-    else npm ci --no-audit --no-fund --loglevel=error; fi &&
+    $INSTALL &&
     chown -R www-data:www-data '$BASE' &&
     systemctl daemon-reload &&
     systemctl enable --now '$SERVICE' >/dev/null 2>&1 &&
@@ -196,11 +213,13 @@ if [[ "$HAS_CERT" == "no" ]]; then
   echo "==> obtaining certificate for $SUB"
   ssh "$SERVER" "certbot certonly --nginx -d '$SUB' --non-interactive 2>&1 | grep -E 'Success|error|failed' | head -2"
   # regenerate the vhost in its final HTTPS form
-  exec "$0" "$NAME" "$LOCAL_DIR" --build none --static "$STATIC_DIR" \
-    $( [[ -n "$PORT" ]] && printf -- '--port %s ' "$PORT" ) \
-    $( for p in "${PROXIES[@]+"${PROXIES[@]}"}"; do printf -- '--proxy %s ' "$p"; done ) \
-    $( for kv in "${ENVS[@]+"${ENVS[@]}"}"; do printf -- '--env %s ' "$kv"; done ) \
-    --start "$START" $( [[ $SPA -eq 1 ]] && echo --spa )
+  RERUN=("$0" "$NAME" "$LOCAL_DIR" --build none --static "$STATIC_DIR" --pm "$PM" --start "$START")
+  [[ -n "$PORT" ]] && RERUN+=(--port "$PORT")
+  [[ -n "$INSTALL" ]] && RERUN+=(--install "$INSTALL")
+  [[ $SPA -eq 1 ]] && RERUN+=(--spa)
+  for p in "${PROXIES[@]+"${PROXIES[@]}"}"; do RERUN+=(--proxy "$p"); done
+  for kv in "${ENVS[@]+"${ENVS[@]}"}"; do RERUN+=(--env "$kv"); done
+  exec "${RERUN[@]}"
 fi
 
 # ── 7. verify ────────────────────────────────────────────────────────────────
