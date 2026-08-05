@@ -34,6 +34,10 @@ There are no tests and no linter. `npm run build` is the verification gate — r
 - **No fake links.** Project cards render `code`/`caseStudy` links only when URLs exist in `projects.ts`; otherwise they show a "// Client work" label. Social URLs in `Header.astro`/`contact.astro` and `site` in `astro.config.mjs` are still unverified placeholders.
 - Design mockup source images tend to land in `~/Downloads/Generated image 1 (N).png`; convert assets with `sips` into `public/images/`.
 
+## Server / deploys
+
+The site is live at https://andrei-ghiorghiu.dev (Vultr VPS `root@64.177.116.163`, key-based SSH works). `deploy/deploy.sh` redeploys the portfolio; `deploy/deploy-project.sh <name> <dir> [--port --proxy --start --env --spa]` deploys any other project to `<name>.andrei-ghiorghiu.dev` (server layout `/var/www/apps/<name>/{app,data}`, systemd unit `app-<name>`, per-subdomain certbot cert; wildcard DNS `*` → the server already exists). The nginx vhost files in `deploy/` are the canonical copies — edit locally, scp to the server, `nginx -t && systemctl reload nginx`. Visit stats: nginx JSON log + `/stats/` dashboard (basic auth) — see `deploy/visits-log.conf` and `deploy/stats.html`.
+
 ## Verifying visual changes
 
 Match the established look against the user's mockups at three widths: ~1440 (desktop, 3-column), ~900 (tablet, 2-column), 375 (mobile: hamburger drawer, stacked layouts). Breakpoints are consistently 1279/1199, 899/767, and 519px across pages.

@@ -40,6 +40,25 @@ Pages carry frontmatter (`title`, `description`, `badges`, `status`). Setting
 `status: proposed` renders the amber "proposed adaptation" banner used by the
 Infrastructure section.
 
+## Deploying
+
+```bash
+./deploy/deploy.sh                    # redeploy the portfolio (build + rsync)
+./deploy/deploy-project.sh <name> <dir> [options]   # deploy an app to <name>.andrei-ghiorghiu.dev
+```
+
+`deploy-project.sh` hosts any project on the same server under its own
+subdomain: static sites get an nginx vhost + Let's Encrypt cert; node apps
+(`--port`/`--proxy`/`--start`/`--env`) additionally get a systemd service with
+nginx proxying the API path. Run with no arguments for full usage. Requires the
+wildcard DNS record `* → 64.177.116.163`. Example:
+
+```bash
+./deploy/deploy-project.sh family-quest ~/Projects/Personal/family-quest \
+  --port 8787 --proxy /io --spa \
+  --env HUB_PORT=8787 --env DB_URL=/var/www/apps/family-quest/data/family-quest.db
+```
+
 ## Adding a page
 
 1. Create `src/content/docs/<group>/<slug>.mdx` with frontmatter.
