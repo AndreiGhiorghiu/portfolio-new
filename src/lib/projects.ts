@@ -11,7 +11,7 @@ export interface Project {
   categories: string[]; // filter keys
   description: string;
   tags: ProjectTag[];
-  thumb: "diagram" | "network" | "menu" | "scene" | "kit" | "quest" | "blocks";
+  thumb: "diagram" | "network" | "menu" | "scene" | "kit" | "quest" | "blocks" | "impulse";
   live?: string;
   caseStudy?: string;
   code?: string;
@@ -94,6 +94,23 @@ export const projects: Project[] = [
     ],
     thumb: "network",
     live: "https://dan-cruceanu.andrei-ghiorghiu.dev",
+    note: "Client work",
+  },
+  {
+    id: "dan-cruceanu-3d",
+    title: "Journey of an Impulse",
+    year: "2026",
+    categories: ["frontend", "3d"],
+    description:
+      "Scroll-driven 3D companion to the psychotherapy site — the visitor travels the brain as a nerve impulse, unwinding cold tangled knots of anxiety and fear into warm golden light.",
+    tags: [
+      { icon: "react", label: "React" },
+      { icon: "three", label: "Three.js" },
+      { icon: "gsap", label: "GSAP" },
+      { icon: "ts", label: "TypeScript" },
+    ],
+    thumb: "impulse",
+    live: "https://dan-cruceanu-3d.andrei-ghiorghiu.dev",
     note: "Client work",
   },
   {
