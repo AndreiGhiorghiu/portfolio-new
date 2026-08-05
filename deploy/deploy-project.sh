@@ -99,8 +99,7 @@ User=www-data
 Group=www-data
 WorkingDirectory=$BASE/app
 ExecStart=/usr/bin/env $START
-$ENV_LINES\
-Restart=on-failure
+${ENV_LINES}Restart=on-failure
 RestartSec=3
 
 [Install]
