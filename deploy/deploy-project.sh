@@ -161,6 +161,7 @@ $PROXY_BLOCKS
         add_header Cache-Control \"public, max-age=31536000, immutable\";
     }
 
+    client_max_body_size 8m;
     gzip on;
     gzip_types text/css application/javascript application/json image/svg+xml;
     gzip_min_length 512;
