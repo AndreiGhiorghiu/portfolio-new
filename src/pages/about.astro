@@ -208,14 +208,14 @@ const beyondCode = [
               <a href="mailto:contact@andrei-ghiorghiu.dev" class="btn primary label">
                 Let's Work Together <Icon name="arrow-right" size={14} />
               </a>
-              <a href="/Andrei-Ghiorghiu-CV.pdf" download class="btn ghost label">
+              <a href={`${import.meta.env.BASE_URL}/Andrei-Ghiorghiu-CV.pdf`} download class="btn ghost label">
                 Download CV <Icon name="arrow-down" size={14} />
               </a>
             </div>
           </div>
           <img
             class="portrait"
-            src="/images/andrei-portrait.jpg"
+            src={`${import.meta.env.BASE_URL}/images/andrei-portrait.jpg`}
             alt="Portrait of Andrei Ghiorghiu"
             width="300"
             height="378"

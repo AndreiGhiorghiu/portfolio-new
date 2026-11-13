@@ -4,16 +4,12 @@ import mdx from "@astrojs/mdx";
 import terminalTheme from "./src/lib/shiki-terminal.mjs";
 
 export default defineConfig({
-  site: "https://andrei-ghiorghiu.dev",
+  site: "https://andreighiorghiu.github.io",
+  base: "/portfolio-new",
   integrations: [mdx()],
   markdown: {
     shikiConfig: {
       theme: terminalTheme,
     },
-  },
-  redirects: {
-    "/": "/docs/overview/high-level-overview",
-    "/docs": "/docs/overview/high-level-overview",
-    "/architecture": "/docs/overview/high-level-overview",
   },
 });

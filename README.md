@@ -42,6 +42,17 @@ Infrastructure section.
 
 ## Deploying
 
+The portfolio is published to GitHub Pages at
+`https://andreighiorghiu.github.io/portfolio-new/`. Pushes to `main` build the
+Astro site and deploy `dist/` through the workflow in `.github/workflows/deploy.yml`.
+In the repository's **Settings → Pages**, select **GitHub Actions** as the build
+and deployment source.
+
+The site uses `/portfolio-new` as its Astro base path because this is a project
+repository rather than the account's `andreighiorghiu.github.io` repository.
+
+The commands below are for the separate VPS deployment:
+
 ```bash
 ./deploy/deploy.sh                    # redeploy the portfolio (build + rsync)
 ./deploy/deploy-project.sh <name> <dir> [options]   # deploy an app to <name>.andrei-ghiorghiu.dev

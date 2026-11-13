@@ -115,7 +115,7 @@ export const books = table("books", {
 The `meta` JSON column is the schema-flexibility play: **one table serves
 every category**, with shape enforced per-catalog by the YAML rules engine at
 the operation boundary rather than by the database (see
-[Data Access Layer](/docs/backend/data-access-layer/)).
+[Data Access Layer](/portfolio-new/docs/backend/data-access-layer/)).
 
 ## revoked_tokens
 
@@ -130,7 +130,7 @@ export const revokedTokens = table("revoked_tokens", {
 
 The hash is **deterministic on purpose**: a lookup key must be reproducible.
 In the cloud adaptation this table becomes a Redis set with a TTL (see
-[Cloud Architecture](/docs/infrastructure/cloud-architecture/)).
+[Cloud Architecture](/portfolio-new/docs/infrastructure/cloud-architecture/)).
 
 ## Client-Side State (for completeness)
 

@@ -67,7 +67,7 @@ export const flatNav: (NavItem & { group: string })[] = nav.flatMap((group) =>
 );
 
 export function docUrl(slug: string): string {
-  return `/docs/${slug}/`;
+  return `${import.meta.env.BASE_URL}/docs/${slug}/`;
 }
 
 export function findBySlug(slug: string) {

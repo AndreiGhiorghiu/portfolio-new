@@ -43,7 +43,7 @@ export const projects: Project[] = [
     ],
     thumb: "diagram",
     live: "https://agent-marketplace.andrei-ghiorghiu.dev",
-    caseStudy: "/docs/overview/high-level-overview/",
+    caseStudy: `${import.meta.env.BASE_URL}/docs/overview/high-level-overview/`,
   },
   {
     id: "family-quest",

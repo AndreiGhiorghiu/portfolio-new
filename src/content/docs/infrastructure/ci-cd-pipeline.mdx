@@ -61,7 +61,7 @@ jobs:
 ```
 
 Deployment then follows the topology from
-[Cloud Architecture](/docs/infrastructure/cloud-architecture/): the image
+[Cloud Architecture](/portfolio-new/docs/infrastructure/cloud-architecture/): the image
 rolls out to the container platform; the client build uploads to the CDN.
 
 ## Design Choices
@@ -84,4 +84,4 @@ rolls out to the container platform; the client build uploads to the CDN.
 2. Merge to `main` → image built and pushed.
 3. Deploy → migrations, then rollout, watching the `io/ping` liveness route.
 4. Rollback trigger: elevated `unknown`-type error replies or failed pings
-   (see [Monitoring & Logs](/docs/infrastructure/monitoring-logs/)).
+   (see [Monitoring & Logs](/portfolio-new/docs/infrastructure/monitoring-logs/)).

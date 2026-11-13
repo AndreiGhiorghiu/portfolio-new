@@ -1,14 +1,17 @@
 ---
 import Icon from "./Icon.astro";
 
-const current = Astro.url.pathname;
+const base = `${import.meta.env.BASE_URL}/`;
+const current = Astro.url.pathname.startsWith(base)
+  ? `/${Astro.url.pathname.slice(base.length)}`
+  : Astro.url.pathname;
 
 const links = [
-  { label: "Architecture", href: "/docs/overview/high-level-overview/", match: "/docs" },
-  { label: "Projects", href: "/projects/", match: "/projects" },
-  { label: "Stack", href: "/stack/", match: "/stack" },
-  { label: "About", href: "/about/", match: "/about" },
-  { label: "Contact", href: "/contact/", match: "/contact" },
+  { label: "Architecture", href: `${base}docs/overview/high-level-overview/`, match: "/docs" },
+  { label: "Projects", href: `${base}projects/`, match: "/projects" },
+  { label: "Stack", href: `${base}stack/`, match: "/stack" },
+  { label: "About", href: `${base}about/`, match: "/about" },
+  { label: "Contact", href: `${base}contact/`, match: "/contact" },
 ];
 ---
 
@@ -17,7 +20,7 @@ const links = [
     <button class="hamburger" id="drawer-open" aria-label="Open navigation">
       <Icon name="menu" size={20} />
     </button>
-    <a href="/docs/overview/high-level-overview/" class="logo">
+    <a href={`${base}docs/overview/high-level-overview/`} class="logo">
       <span class="logo-mark">AG<span class="logo-cursor">_</span></span>
       <span class="logo-slash">/</span>
       <span class="logo-name">

@@ -12,6 +12,7 @@ interface Props {
 }
 
 const { title, command, description } = Astro.props;
+const base = `${import.meta.env.BASE_URL}/`;
 ---
 
 <Base title={title} description={description}>
@@ -24,7 +25,7 @@ const { title, command, description } = Astro.props;
       </p>
       <h1 class="label">Under Construction</h1>
       <p class="stub-text">{description}</p>
-      <a href="/docs/overview/high-level-overview/" class="stub-link label">
+      <a href={`${base}docs/overview/high-level-overview/`} class="stub-link label">
         &larr; Back to the architecture docs
       </a>
     </div>

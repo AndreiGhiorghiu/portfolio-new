@@ -72,7 +72,7 @@ inside every message, so any server instance holding the key can authenticate
 any request. There is no session table and no sticky-session requirement — the
 only shared state is the database and a small revocation blocklist. That makes
 horizontal scaling a deployment concern rather than an architectural one (see
-[Cloud Architecture](/docs/infrastructure/cloud-architecture/)).
+[Cloud Architecture](/portfolio-new/docs/infrastructure/cloud-architecture/)).
 
 ## Security
 
@@ -95,4 +95,4 @@ exactly one place to intercept every operation call — the natural seam for
 structured logging, tracing and metrics. The worker already records an error
 trail per request (`worker.errors`), and the server scrubs stack traces before
 anything reaches the client. The proposed production wiring is described in
-[Monitoring & Logs](/docs/infrastructure/monitoring-logs/).
+[Monitoring & Logs](/portfolio-new/docs/infrastructure/monitoring-logs/).
